@@ -1,0 +1,8 @@
+repositories:
+  - fastapi/fastapi
+  - pallets/flask
+  - langchain-ai/langchain
+  - run-llama/llama_index
+  - ollama/ollama
+  - vllm-project/vllm
+  - huggingface/transformers
