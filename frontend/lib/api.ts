@@ -118,9 +118,131 @@ export type CollectorJob = {
   finished_at: string | null;
 };
 
+export type ScoutCard = {
+  promise_score: number;
+  quantitative_score: number;
+  ai_score: number;
+  confidence: number;
+  why_it_surfaced: string;
+  supporting_facts: string[];
+  uncertainty: string | null;
+  risk_flags: string[];
+  score_components: Record<string, any>;
+  model_identity: string;
+  created_at: string | null;
+};
+
+export type CatalogRepo = {
+  github_id: number;
+  owner: string;
+  name: string;
+  full_name: string;
+  description: string | null;
+  primary_language: string | null;
+  license: string | null;
+  default_branch: string;
+  stars: number;
+  forks: number;
+  watchers: number;
+  open_issues: number;
+  created_at: string;
+  updated_at: string;
+  pushed_at: string | null;
+  tier: string;
+  is_directory: boolean;
+  is_deep: boolean;
+  classification: string;
+  classification_confidence: number;
+  topics: string[];
+  selection_score: number;
+  promise_score: number | null;
+  scout_eligible: boolean;
+  scout?: ScoutCard | null;
+  lens_metrics?: Record<string, any>;
+};
+
+export type CursorEnvelope<T> = {
+  items: T[];
+  next_cursor: string | null;
+  total_count: number;
+  lens?: string;
+};
+
+export type SearchResultItem = CatalogRepo & { search_rrf_score: number };
+
+export type SearchResult = {
+  items: SearchResultItem[];
+  next_cursor: string | null;
+  total_count: number;
+  interpreted_filters: Record<string, any>;
+  result_rationale: string;
+  evidence_freshness: string;
+  semantic_available: boolean;
+};
+
+export type ScoutFeedItem = {
+  github_id: number;
+  owner: string;
+  name: string;
+  full_name: string;
+  description: string | null;
+  primary_language: string | null;
+  license: string | null;
+  stars: number;
+  forks: number;
+  pushed_at: string | null;
+  topics: string[];
+  promise_score: number;
+  confidence: number;
+  why_it_surfaced: string;
+  supporting_facts: string[];
+  uncertainty: string | null;
+  risk_flags: string[];
+  score_components: Record<string, any>;
+};
+
+export type Facets = {
+  languages: Array<{ name: string; count: number }>;
+  categories: Array<{ name: string; count: number }>;
+  licenses: Array<{ name: string; count: number }>;
+  evidence_levels: Record<string, number>;
+  freshness_counts: Record<string, number>;
+};
+
+export type UnifiedProfile = {
+  catalog: CatalogRepo;
+  scout?: ScoutCard | null;
+  deep_evidence?: {
+    hydrated_id: number;
+    last_ingested_at: string | null;
+    metric?: Metric | null;
+    top_contributors: Array<{ login: string; contributions: number; avatar_url: string | null }>;
+    snapshot_history: Array<{ captured_at: string; stars: number; forks: number; open_issues: number }>;
+  } | null;
+  provenance: Record<string, any>;
+  readme_excerpt: string | null;
+};
+
 async function get<T>(path: string): Promise<T> {
   const response = await fetch(`${apiBase()}/api/v1${path}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`API returned ${response.status} for ${path}`);
+  return response.json();
+}
+
+async function getV2<T>(path: string): Promise<T> {
+  const response = await fetch(`${apiBase()}/api/v2${path}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`API v2 returned ${response.status} for ${path}`);
+  return response.json();
+}
+
+async function postV2<T>(path: string, body: any): Promise<T> {
+  const response = await fetch(`${apiBase()}/api/v2${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error(`API v2 POST returned ${response.status} for ${path}`);
   return response.json();
 }
 
@@ -136,9 +258,35 @@ export const api = {
   trending: (limit = 100) => get<Candidate[]>(`/trending?limit=${limit}`),
   collectorOverview: () => get<CollectorOverview>("/collector/overview"),
   collectorJobs: (limit = 100) => get<CollectorJob[]>(`/collector/jobs?limit=${limit}`),
+
+  // API v2
+  v2: {
+    repositories: (params: Record<string, any> = {}) => {
+      const sp = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
+      });
+      const q = sp.toString();
+      return getV2<CursorEnvelope<CatalogRepo>>(`/repositories${q ? `?${q}` : ""}`);
+    },
+    repository: (owner: string, repo: string) => getV2<UnifiedProfile>(`/repositories/${owner}/${repo}`),
+    search: (query: string, filters: Record<string, any> = {}, cursor?: string, limit = 50) =>
+      postV2<SearchResult>("/search", { query, filters, cursor, limit }),
+    scout: (params: Record<string, any> = {}) => {
+      const sp = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== "") sp.set(k, String(v));
+      });
+      const q = sp.toString();
+      return getV2<CursorEnvelope<ScoutFeedItem>>(`/scout${q ? `?${q}` : ""}`);
+    },
+    facets: () => getV2<Facets>("/facets"),
+    health: () => getV2<any>("/health"),
+  },
 };
 
 export function mergeRepositories(repositories: Repo[], metrics: Metric[]): RepositoryRecord[] {
   const byName = new Map(metrics.map((metric) => [metric.repository.toLowerCase(), metric]));
   return repositories.map((repository) => ({ ...repository, metric: byName.get(repository.full_name.toLowerCase()) }));
 }
+

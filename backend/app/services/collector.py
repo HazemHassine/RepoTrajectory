@@ -11,15 +11,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.db.models import (
+    CatalogRepository,
     CollectorState,
     ExternalRepositoryActivity,
     GhArchiveFile,
     IngestionJob,
     RepositoryCandidate,
+    RepositoryEmbedding,
+    ScoutAssessment,
 )
 from app.db.session import SessionLocal
 from app.github.client import GitHubClient, GitHubRateLimitError
 from app.services.analytics import calculate_metrics
+from app.services.catalog import generate_catalog_embeddings, sync_catalog_from_repository
+from app.services.directory import discover_github_sharded, reconcile_directory_and_cohort
 from app.services.discovery import (
     SOFTWARE_CLASSIFICATIONS,
     GhArchiveClient,
@@ -31,6 +36,7 @@ from app.services.discovery import (
     reconcile_collection,
 )
 from app.services.ingestion import RepositoryIngester
+from app.services.scout import run_daily_scout_batch
 
 log = structlog.get_logger()
 
@@ -223,6 +229,37 @@ class CollectorScheduler:
             refresh += 1
         await enqueue_job(
             session,
+            "reconcile_directory",
+            f"reconcile_directory:{day_key}",
+            priority=85,
+            max_attempts=3,
+        )
+        await enqueue_job(
+            session,
+            "scout_eval_batch",
+            f"scout_eval_batch:{day_key}",
+            priority=80,
+            max_attempts=3,
+        )
+        await enqueue_job(
+            session,
+            "generate_embeddings",
+            f"generate_embeddings:{day_key}",
+            priority=70,
+            max_attempts=3,
+        )
+        for language in self.settings.discovery_language_list[:2]:
+            for s_min, s_max in [(0, 10), (11, 50), (51, 200)]:
+                await enqueue_job(
+                    session,
+                    "discover_sharded",
+                    f"discover:sharded:{language.casefold()}:{s_min}_{s_max}:{day_key}",
+                    payload={"language": language, "star_min": s_min, "star_max": s_max},
+                    priority=60,
+                    max_attempts=3,
+                )
+        await enqueue_job(
+            session,
             "maintenance",
             f"maintenance:{day_key}",
             priority=-10,
@@ -360,6 +397,22 @@ class CollectorWorker:
                     full_name
                 )
                 await calculate_metrics(session, repo, 30)
+                await sync_catalog_from_repository(session, repo)
+            elif job.job_type == "reconcile_directory":
+                await reconcile_directory_and_cohort(session, self.settings)
+            elif job.job_type == "scout_eval_batch":
+                await run_daily_scout_batch(
+                    session, limit=self.settings.scout_daily_eval_limit, settings=self.settings
+                )
+            elif job.job_type == "generate_embeddings":
+                await generate_catalog_embeddings(session, limit=100, settings=self.settings)
+            elif job.job_type == "discover_sharded":
+                lang = str(job.payload["language"])
+                s_min = int(job.payload.get("star_min", 0))
+                s_max = int(job.payload.get("star_max", 10))
+                await discover_github_sharded(
+                    session, self.github, self.settings, language=lang, star_min=s_min, star_max=s_max
+                )
             elif job.job_type == "maintenance":
                 await self._maintenance(session)
             else:
@@ -387,6 +440,7 @@ class CollectorWorker:
             candidate.full_name, mode="refresh" if candidate.repository_id else "full"
         )
         await calculate_metrics(session, repo, 30)
+        await sync_catalog_from_repository(session, repo)
         candidate = await session.get(RepositoryCandidate, job.candidate_id)
         if candidate:
             candidate.repository_id = repo.id
@@ -578,9 +632,18 @@ async def collector_overview(session: AsyncSession) -> dict[str, Any]:
         # Keep the status endpoint usable with restricted/read-only database roles.
         await session.rollback()
         database_size = None
-    last_completed = await session.scalar(
-        select(func.max(IngestionJob.finished_at)).where(IngestionJob.status == "completed")
+    catalog_total = await session.scalar(select(func.count()).select_from(CatalogRepository))
+    directory_total = await session.scalar(
+        select(func.count()).where(CatalogRepository.is_directory.is_(True))
     )
+    deep_total = await session.scalar(
+        select(func.count()).where(CatalogRepository.is_deep.is_(True))
+    )
+    scout_total = await session.scalar(
+        select(func.count()).where(ScoutAssessment.is_current.is_(True))
+    )
+    embeddings_total = await session.scalar(select(func.count()).select_from(RepositoryEmbedding))
+
     return {
         "tiers": {name: int(count) for name, count in tier_rows},
         "classifications": {name: int(count) for name, count in classification_rows},
@@ -592,6 +655,11 @@ async def collector_overview(session: AsyncSession) -> dict[str, Any]:
         "archive_compressed_bytes": int(archive_bytes or 0),
         "external_activity_rows": int(activity_rows or 0),
         "hydrated_repositories": int(hydrated or 0),
+        "catalog_repositories": int(catalog_total or 0),
+        "directory_members": int(directory_total or 0),
+        "deep_cohort_members": int(deep_total or 0),
+        "scout_assessments": int(scout_total or 0),
+        "repository_embeddings": int(embeddings_total or 0),
         "database_size_bytes": int(database_size) if database_size is not None else None,
         "oldest_queued_at": oldest_queued,
         "last_completed_at": last_completed,

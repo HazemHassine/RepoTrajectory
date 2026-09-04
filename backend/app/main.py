@@ -7,6 +7,7 @@ from fastapi.responses import Response
 
 from app.api.admin import router as admin_router
 from app.api.routes import router
+from app.api.v2.routes import router as v2_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 
@@ -21,7 +22,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.1.0",
+    version="0.2.0",
     description=(
         "Explainable health, growth, and activity intelligence for open-source repositories."
     ),
@@ -36,6 +37,7 @@ app.add_middleware(
 )
 app.include_router(router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
+app.include_router(v2_router, prefix="/api/v2")
 
 
 @app.middleware("http")

@@ -1,0 +1,28 @@
+{
+    # Global options
+    auto_https off
+}
+
+:80 {
+    encode gzip zstd
+
+    # Route API and health endpoints to backend
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+
+    handle /health {
+        reverse_proxy api:8000
+    }
+
+    # Route backend proxy route from frontend
+    handle /backend/* {
+        uri strip_prefix /backend
+        reverse_proxy api:8000
+    }
+
+    # Route all other web traffic to Next.js frontend
+    handle {
+        reverse_proxy web:3000
+    }
+}

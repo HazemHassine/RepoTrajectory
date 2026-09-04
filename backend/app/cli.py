@@ -121,5 +121,103 @@ def classify_candidates() -> None:
     asyncio.run(execute())
 
 
+@cli.command("reconcile-directory")
+def reconcile_directory() -> None:
+    """Select top 10,000 active directory members with diversity caps and 500 deep cohort."""
+    from app.services.directory import reconcile_directory_and_cohort
+
+    async def execute() -> None:
+        async with SessionLocal() as session:
+            summary = await reconcile_directory_and_cohort(session)
+        typer.echo(f"Directory reconciled: {summary}")
+
+    asyncio.run(execute())
+
+
+@cli.command("scout-eval")
+def scout_eval(limit: int = typer.Option(100, help="Max candidates to evaluate.")) -> None:
+    """Run structured Scout evaluation batch on top eligible candidates."""
+    from app.services.scout import run_daily_scout_batch
+
+    async def execute() -> None:
+        async with SessionLocal() as session:
+            count = await run_daily_scout_batch(session, limit=limit)
+        typer.echo(f"Evaluated {count} Scout candidates")
+
+    asyncio.run(execute())
+
+
+@cli.command("generate-embeddings")
+def generate_embeddings(limit: int = typer.Option(100, help="Max embeddings to generate.")) -> None:
+    """Generate versioned pgvector embeddings for catalog repositories lacking them."""
+    from app.services.catalog import generate_catalog_embeddings
+
+    async def execute() -> None:
+        async with SessionLocal() as session:
+            count = await generate_catalog_embeddings(session, limit=limit)
+        typer.echo(f"Generated {count} embeddings")
+
+    asyncio.run(execute())
+
+
+@cli.command("discover-sharded")
+def discover_sharded(
+    language: str = typer.Option("Python", help="Target programming language"),
+    star_min: int = typer.Option(0, help="Minimum star boundary"),
+    star_max: int = typer.Option(50, help="Maximum star boundary"),
+) -> None:
+    """Run sharded discovery to avoid 1,000-search limit cliff and discover low-star gems."""
+    from app.services.directory import discover_github_sharded
+
+    settings = get_settings()
+
+    async def execute() -> None:
+        async with GitHubClient(
+            settings.github_token,
+            settings.github_api_url,
+            request_interval_seconds=settings.github_request_interval_seconds,
+            rate_limit_reserve=settings.github_rate_limit_reserve,
+        ) as github:
+            async with SessionLocal() as session:
+                count = await discover_github_sharded(
+                    session, github, settings, language=language, star_min=star_min, star_max=star_max
+                )
+        typer.echo(f"Discovered {count} repositories in shard {language} ({star_min}..{star_max} stars)")
+
+    asyncio.run(execute())
+
+
+@cli.command("seed-benchmark")
+def seed_benchmark(
+    candidates: int = typer.Option(50000, help="Number of candidate records"),
+    directory: int = typer.Option(10000, help="Number of directory members"),
+    activity: int = typer.Option(1000000, help="Number of activity rows"),
+) -> None:
+    """Seed benchmark dataset with 10k directory, 50k candidates, and 1M activity records."""
+    from app.services.benchmark import seed_benchmark_dataset
+
+    async def execute() -> None:
+        async with SessionLocal() as session:
+            summary = await seed_benchmark_dataset(
+                session, candidate_count=candidates, directory_count=directory, activity_count=activity
+            )
+        typer.echo(f"Seeded benchmark dataset: {summary}")
+
+    asyncio.run(execute())
+
+
+@cli.command("benchmark-latencies")
+def benchmark_latencies(iterations: int = typer.Option(50, help="Number of test iterations")) -> None:
+    """Measure warm directory/filter and cached hybrid search p95 latencies."""
+    from app.services.benchmark import measure_query_latencies
+
+    async def execute() -> None:
+        async with SessionLocal() as session:
+            results = await measure_query_latencies(session, iterations=iterations)
+        typer.echo(f"Benchmark Results: {results}")
+
+    asyncio.run(execute())
+
+
 if __name__ == "__main__":
     cli()

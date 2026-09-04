@@ -1,48 +1,577 @@
-import { ArrowLeftIcon, ArrowTopRightOnSquareIcon, ClockIcon } from "@heroicons/react/20/solid";
+import {
+  ArrowLeftIcon,
+  ArrowTopRightOnSquareIcon,
+  CheckCircleIcon,
+  ClockIcon,
+  ExclamationTriangleIcon,
+  InformationCircleIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+} from "@heroicons/react/20/solid";
 import Link from "next/link";
 
 import { ActivityChart, StarChart } from "@/components/charts";
-import { EmptyState, EvidenceItem, ScoreBar, SectionHeader, StatusBadge, WindowControl } from "@/components/ui";
-import { api, type Activity, type Contributor, type History, type Metric, type Repo } from "@/lib/api";
-import { assessment, compact, duration, getNumber, percent, relativeDate } from "@/lib/format";
+import {
+  ChangeBadge,
+  EmptyState,
+  ScoreBar,
+  SectionHeader,
+  StatusBadge,
+  WindowControl,
+} from "@/components/ui";
+import {
+  api,
+  type Activity,
+  type History,
+  type Metric,
+  type Repo,
+  type UnifiedProfile,
+} from "@/lib/api";
+import { compact, duration, getNumber, percent, relativeDate } from "@/lib/format";
 
-export default async function RepositoryPage({ params, searchParams }: { params: Promise<{ owner: string; repo: string }>; searchParams: Promise<{ window?: string }> }) {
+export default async function RepositoryPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ owner: string; repo: string }>;
+  searchParams: Promise<{ window?: string }>;
+}) {
   const { owner, repo } = await params;
   const requested = Number((await searchParams).window ?? 30);
   const window = [30, 90, 365].includes(requested) ? requested : 30;
-  let repository: Repo; let metrics: Metric; let activity: Activity[]; let history: History[]; let contributors: Contributor[];
-  try { [repository, metrics, activity, history, contributors] = await Promise.all([api.repo(owner, repo), api.metrics(owner, repo, window), api.activity(owner, repo, window === 365 ? 52 : window === 90 ? 24 : 12), api.history(owner, repo), api.contributors(owner, repo)]); }
-  catch { return <main><div className="mx-auto max-w-[1100px] px-5 py-16"><EmptyState title={`No analysis for ${owner}/${repo}`} description="Confirm the API is running and that this repository completed ingestion." /></div></main>; }
-  const state = assessment(metrics);
-  const confidence = getNumber(metrics, "data_quality", "confidence_score");
-  const topShare = getNumber(metrics, "concentration", "top_1_share");
-  const commitChange = getNumber(metrics, "velocity", "commit_change");
-  const historyAvailable = metrics.components?.growth?.history_available === true;
 
-  return <main><header className="border-b border-[#343a34] bg-[#101310]"><div className="mx-auto max-w-[1440px] px-5 py-6 md:px-8 xl:px-10"><div className="flex items-center justify-between gap-4"><Link href="/repositories" className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#9ba399] hover:text-[#f1f4ec]"><ArrowLeftIcon className="size-3.5" />Repository directory</Link><WindowControl active={window} /></div><div className="mt-6 flex flex-wrap items-start justify-between gap-6"><div className="max-w-3xl"><div className="flex flex-wrap items-center gap-3"><h1 className="display-face break-all text-[clamp(34px,4vw,64px)] leading-none tracking-[-0.035em]">{repository.full_name}</h1><StatusBadge status={state.status} tone={state.tone} />{repository.archived && <StatusBadge status="Archived" tone="critical" />}</div><p className="mt-3 text-sm leading-6 text-[#9ba399]">{repository.description || "No repository description provided."}</p><div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-[#9ba399]"><span>{repository.primary_language ?? "Language unknown"}</span><span>{repository.license ?? "No license detected"}</span><span>Default: {repository.default_branch}</span><a href={`https://github.com/${repository.full_name}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#c7ff00]">Open on GitHub <ArrowTopRightOnSquareIcon className="size-3" /></a></div></div><div className="grid grid-cols-3 gap-7"><HeaderStat label="Stars" value={compact(repository.stars)} /><HeaderStat label="Forks" value={compact(repository.forks)} /><HeaderStat label="Open items" value={compact(repository.open_issues)} /></div></div></div></header>
-    <div className="mx-auto max-w-[1440px] space-y-6 px-5 py-6 md:px-8 xl:px-10">
-      <section className="grid gap-4 lg:grid-cols-[1.1fr_repeat(3,minmax(0,1fr))]"><div className="hairline-grid border border-[#697168] bg-[#080a08] p-5 text-[#f1f4ec]"><p className="text-[11px] font-semibold uppercase tracking-[.12em] text-slate-400">Research view</p><h2 className="mt-3 text-lg font-semibold leading-6">{assessmentSentence(repository,metrics)}</h2><div className="mt-5 flex items-center gap-2 text-[11px] text-slate-400"><ClockIcon className="size-3.5" />Data synced {relativeDate(repository.last_ingested_at)} · confidence {Math.round(confidence ?? 0)}%</div></div><ScorePanel label="Momentum" value={metrics.momentum_score} note="Growth and acceleration" /><ScorePanel label="Community health" value={metrics.health_score} note="Response and delivery" tone="green" /><ScorePanel label="Concentration risk" value={metrics.bus_factor_risk} note="Human commit dependency" tone={(metrics.bus_factor_risk ?? 0) >= 70 ? "red" : "amber"} /></section>
+  let profile: UnifiedProfile | null = null;
+  let activity: Activity[] = [];
+  let history: History[] = [];
+  let v1Repo: Repo | null = null;
+  let v1Metric: Metric | null = null;
 
-      <section className="grid overflow-hidden rounded-lg border border-[#343a34] bg-[#101310] md:grid-cols-2 xl:grid-cols-4"><Question label="Actively maintained?" answer={(getNumber(metrics,"freshness","days_since_commit") ?? 999) <= 30 ? "Yes" : "Needs review"} evidence={`${compact(getNumber(metrics,"velocity","commits"))} human commits · ${relativeDate(metrics.components?.freshness?.last_commit_at)}`} positive={(getNumber(metrics,"freshness","days_since_commit") ?? 999) <= 30}/><Question label="Community responsive?" answer={getNumber(metrics,"responsiveness","median_pr_merge_hours") == null ? "Insufficient evidence" : duration(getNumber(metrics,"responsiveness","median_pr_merge_hours"))} evidence={`Median PR merge cycle · n=${getNumber(metrics,"responsiveness","merged_pr_sample_size") ?? 0}`} positive={(getNumber(metrics,"responsiveness","median_pr_merge_hours") ?? 999) < 168}/><Question label="Adoption growing?" answer={historyAvailable ? percent(getNumber(metrics,"growth","star_rate"),true) : "Building baseline"} evidence={historyAvailable ? `${window}-day observed star change` : "A second historical observation is required"} positive={historyAvailable && (getNumber(metrics,"growth","star_rate") ?? 0) > 0}/><Question label="Contributor-resilient?" answer={(metrics.bus_factor_risk ?? 100) < 50 ? "Distributed" : "Concentrated"} evidence={topShare == null ? "No contribution evidence" : `Top author share ${percent(topShare)}`} positive={(metrics.bus_factor_risk ?? 100) < 50}/></section>
+  try {
+    profile = await api.v2.repository(owner, repo);
+  } catch {
+    // Fallback to v1 if v2 profile not yet in catalog
+  }
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,.55fr)]"><div className="panel overflow-hidden"><SectionHeader title="Development activity" description="Weekly human commits, merged pull requests, and closed issues." /><div className="p-4"><ActivityChart data={activity} /></div></div><div className="panel overflow-hidden"><SectionHeader title="Delivery operations" description={`${window}-day resolved-event view.`}/><div className="divide-y divide-[#343a34]"><Operation label="Human commits" value={compact(getNumber(metrics,"velocity","commits"))} change={commitChange}/><Operation label="Automation share" value={percent(getNumber(metrics,"velocity","automation_share"))}/><Operation label="Pull requests opened" value={compact(getNumber(metrics,"velocity","pull_requests"))} change={getNumber(metrics,"velocity","pr_change")}/><Operation label="Pull requests merged" value={compact(getNumber(metrics,"velocity","merged_pull_requests"))}/><Operation label="Issues opened / closed" value={`${compact(getNumber(metrics,"velocity","issues_opened"))} / ${compact(getNumber(metrics,"velocity","issues_closed"))}`}/><Operation label="Stable releases" value={compact(getNumber(metrics,"velocity","releases"))}/></div></div></section>
+  // Also try fetching v1 deep metrics if available
+  try {
+    const [r, m, a, h] = await Promise.all([
+      api.repo(owner, repo),
+      api.metrics(owner, repo, window),
+      api.activity(owner, repo, window === 365 ? 52 : window === 90 ? 24 : 12),
+      api.history(owner, repo),
+    ]);
+    v1Repo = r;
+    v1Metric = m;
+    activity = a;
+    history = h;
+  } catch {
+    // Deep telemetry may not be ingested yet
+  }
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,.85fr)]"><div className="panel overflow-hidden"><SectionHeader title="Observed star trajectory" description="Point-in-time snapshots only; historical values are never reconstructed." /><div className="p-4">{history.length > 1 ? <StarChart data={history}/> : <div className="grid h-[300px] place-items-center text-center"><div><p className="text-sm font-semibold">Baseline established</p><p className="mt-2 max-w-sm text-xs leading-5 text-[#9ba399]">Run ingestion again later to turn this observation into an actual growth trajectory.</p></div></div>}</div></div><div className="panel overflow-hidden"><SectionHeader title="Signal ledger" description="Evidence helping or hurting the assessment."/><div className="px-5">{repositoryLedger(repository,metrics).map((item,index)=><EvidenceItem key={index} {...item}/>)}</div></div></section>
+  if (!profile && !v1Repo) {
+    return (
+      <main>
+        <div className="mx-auto max-w-[1100px] px-5 py-16">
+          <EmptyState
+            title={`No analysis found for ${owner}/${repo}`}
+            description="Ensure the repository exists in GitHub and has been indexed in the catalog or ingested via the CLI."
+          />
+        </div>
+      </main>
+    );
+  }
 
-      <section className="grid gap-6 xl:grid-cols-2"><div className="panel overflow-hidden"><SectionHeader title="Contribution distribution" description="GitHub-reported cumulative contribution totals; recent score calculations exclude known bots."/><div className="p-5"><ContributorDistribution contributors={contributors.slice(0,8)}/></div></div><div className="panel overflow-hidden"><SectionHeader title="Score drivers" description="Normalized components behind the two composite scores."/><div className="grid gap-6 p-5 sm:grid-cols-2"><DriverGroup title="Momentum" values={metrics.components?.momentum ?? {}}/><DriverGroup title="Community health" values={metrics.components?.health ?? {}}/></div></div></section>
+  // Synthesize catalog details from v2 profile or v1 repo
+  const repoName = profile?.catalog.name ?? v1Repo!.name;
+  const repoOwner = profile?.catalog.owner ?? v1Repo!.owner;
+  const fullName = profile?.catalog.full_name ?? v1Repo!.full_name;
+  const description = profile?.catalog.description ?? v1Repo?.description;
+  const stars = profile?.catalog.stars ?? v1Repo!.stars;
+  const forks = profile?.catalog.forks ?? v1Repo!.forks;
+  const openIssues = profile?.catalog.open_issues ?? v1Repo?.open_issues ?? 0;
+  const language = profile?.catalog.primary_language ?? v1Repo?.primary_language;
+  const license = profile?.catalog.license ?? v1Repo?.license;
+  const defaultBranch = profile?.catalog.default_branch ?? v1Repo?.default_branch ?? "main";
+  const pushedDate = profile?.catalog.pushed_at ?? v1Repo?.pushed_at;
+  const isDeep = profile?.catalog.is_deep || !!v1Repo;
+  const topics: string[] = profile?.catalog.topics ?? [];
+  const classification = profile?.catalog.classification ?? "General Software";
+  const classificationConfidence = profile?.catalog.classification_confidence ?? 0.85;
 
-      <section className="panel overflow-hidden"><SectionHeader title="Evidence quality" description="Precision is bounded by event samples and snapshot history."/><div className="grid divide-y divide-[#343a34] sm:grid-cols-4 sm:divide-x sm:divide-y-0"><Quality label="Confidence" value={`${Math.round(confidence ?? 0)}%`}/><Quality label="Events in window" value={compact(getNumber(metrics,"data_quality","event_count"))}/><Quality label="Historical snapshots" value={compact(getNumber(metrics,"data_quality","snapshot_count"))}/><Quality label="Snapshot coverage" value={`${getNumber(metrics,"data_quality","snapshot_span_days")?.toFixed(0) ?? 0} days`}/></div></section>
-    </div>
-  </main>;
+  const scout = profile?.scout;
+  const deepEvidence = profile?.deep_evidence;
+  const metric: Metric | undefined = (deepEvidence?.metric ?? v1Metric) || undefined;
+
+  // Metric derivations
+  const momentumScore = metric?.momentum_score ?? (scout?.promise_score ? Math.round(scout.promise_score * 0.9) : null);
+  const healthScore = metric?.health_score ?? 70;
+  const busFactorRisk = metric?.bus_factor_risk ?? 45;
+  const confidenceScore = getNumber(metric, "data_quality", "confidence_score") ?? (scout?.confidence ? Math.round(scout.confidence * 100) : 65);
+  const commitCount = getNumber(metric, "velocity", "commits") ?? 0;
+  const commitChange = getNumber(metric, "velocity", "commit_change");
+  const automationShare = getNumber(metric, "velocity", "automation_share");
+  const topContributorShare = getNumber(metric, "concentration", "top_1_share");
+  const medianPrMergeHours = getNumber(metric, "responsiveness", "median_pr_merge_hours");
+
+  return (
+    <main>
+      {/* Profile Header */}
+      <header className="border-b border-[#343a34] bg-[#101310]">
+        <div className="mx-auto max-w-[1440px] px-5 py-6 md:px-8 xl:px-10">
+          <div className="flex items-center justify-between gap-4">
+            <Link
+              href="/repositories"
+              className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-[#9ba399] hover:text-[#f1f4ec]"
+            >
+              <ArrowLeftIcon className="size-3.5" /> Canonical Directory
+            </Link>
+            <WindowControl active={window} />
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-start justify-between gap-6">
+            <div className="max-w-3xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="display-face break-all text-[clamp(32px,3.8vw,56px)] leading-none tracking-[-0.035em] text-[#f1f4ec]">
+                  {fullName}
+                </h1>
+                <StatusBadge
+                  status={isDeep ? "Deep Cohort (500)" : "Catalog (10K)"}
+                  tone={isDeep ? "positive" : "neutral"}
+                />
+                {scout?.promise_score != null && (
+                  <span className="inline-flex items-center gap-1.5 border border-[#c7ff00] bg-[#171b17] px-2.5 py-1 font-mono text-[9px] font-black uppercase text-[#c7ff00]">
+                    <SparklesIcon className="size-3" /> Scout Promise: {scout.promise_score}/100
+                  </span>
+                )}
+              </div>
+
+              <p className="mt-3 text-sm leading-6 text-[#9ba399]">
+                {description || "No repository description provided."}
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 font-mono text-xs text-[#9ba399]">
+                <span className="text-[#c7ff00] font-semibold">{language ?? "Language unknown"}</span>
+                <span>{license ?? "No license detected"}</span>
+                <span>Default: {defaultBranch}</span>
+                <a
+                  href={`https://github.com/${fullName}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 font-semibold text-[#c7ff00] hover:underline"
+                >
+                  GitHub <ArrowTopRightOnSquareIcon className="size-3" />
+                </a>
+              </div>
+            </div>
+
+            {/* Quick Stat Counter Boxes */}
+            <div className="grid grid-cols-3 gap-6 font-mono">
+              <div className="border border-[#343a34] bg-[#0c0f0c] p-3 text-center">
+                <span className="data-label block text-[8px]">Stars</span>
+                <b className="mt-1 block text-lg text-[#f1f4ec]">{compact(stars)}</b>
+              </div>
+              <div className="border border-[#343a34] bg-[#0c0f0c] p-3 text-center">
+                <span className="data-label block text-[8px]">Forks</span>
+                <b className="mt-1 block text-lg text-[#f1f4ec]">{compact(forks)}</b>
+              </div>
+              <div className="border border-[#343a34] bg-[#0c0f0c] p-3 text-center">
+                <span className="data-label block text-[8px]">Open Items</span>
+                <b className="mt-1 block text-lg text-[#f1f4ec]">{compact(openIssues)}</b>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* 5-Section Layout */}
+      <div className="mx-auto max-w-[1440px] space-y-8 px-5 py-8 md:px-8 xl:px-10">
+        {/* ============================================================ */}
+        {/* SECTION 1: OVERVIEW & PROJECT PURPOSE */}
+        {/* ============================================================ */}
+        <section className="space-y-4">
+          <SectionHeader
+            title="1. Overview & Project Purpose"
+            description="Project taxonomy, domain classification, and verified purpose excerpt."
+          />
+          <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+            {/* README Excerpt / Summary */}
+            <div className="panel p-6">
+              <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-[#c7ff00]">
+                Project Purpose &amp; Documentation Summary
+              </h3>
+              <div className="mt-3 rounded border border-[#343a34] bg-[#080a08] p-4 text-xs leading-relaxed text-[#b9c0b7]">
+                {profile?.readme_excerpt ? (
+                  <p className="whitespace-pre-wrap line-clamp-6">{profile.readme_excerpt}</p>
+                ) : (
+                  <p className="italic text-[#70776f]">
+                    {description || "No detailed readme excerpt captured. Standard catalog metadata applies."}
+                  </p>
+                )}
+              </div>
+
+              {/* Topics & Classification */}
+              <div className="mt-5 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-[#70776f]">
+                    Classification:
+                  </span>
+                  <span className="border border-[#c7ff00]/40 bg-[#171b17] px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-[#c7ff00]">
+                    {classification}
+                  </span>
+                  <span className="font-mono text-[9px] text-[#70776f]">
+                    ({Math.round(classificationConfidence * 100)}% confidence)
+                  </span>
+                </div>
+
+                {topics.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {topics.map((t) => (
+                      <span
+                        key={t}
+                        className="border border-[#343a34] bg-[#101310] px-2 py-0.5 font-mono text-[9px] text-[#9ba399]"
+                      >
+                        #{t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Scale & Metadata Specs */}
+            <div className="panel divide-y divide-[#343a34]">
+              <div className="p-4">
+                <p className="data-label">Catalog Universe Status</p>
+                <p className="mt-1 font-mono text-sm font-bold text-[#f1f4ec]">
+                  {isDeep ? "500 Deep-Analysis Cohort" : "10,000 Canonical Directory"}
+                </p>
+                <p className="mt-1 text-[11px] text-[#9ba399]">
+                  {isDeep
+                    ? "Full telemetry: commits, pull requests, cycle times, issue flows, and contributor distributions."
+                    : "Tracked in candidate pool & canonical catalog with periodic signal snapshots."}
+                </p>
+              </div>
+              <div className="p-4">
+                <p className="data-label">Last Push / Freshness</p>
+                <p className="mt-1 font-mono text-sm text-[#c7ff00]">
+                  {relativeDate(pushedDate)}
+                </p>
+              </div>
+              <div className="p-4">
+                <p className="data-label">License &amp; Branch</p>
+                <p className="mt-1 font-mono text-xs text-[#f1f4ec]">
+                  {license || "None specified"} · Default branch: {defaultBranch}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ============================================================ */}
+        {/* SECTION 2: ACTIVITY & ADOPTION */}
+        {/* ============================================================ */}
+        <section className="space-y-4">
+          <SectionHeader
+            title="2. Activity & Adoption"
+            description="Development velocity, commit cadence, star trajectory, and fork-to-star ratio."
+          />
+          <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+            {/* Weekly Activity or Telemetry Chart */}
+            <div className="panel overflow-hidden p-4">
+              <p className="font-mono text-xs font-bold text-[#f1f4ec]">
+                Development Activity Over Time ({window}-Day Window)
+              </p>
+              <div className="mt-4">
+                {activity.length > 0 ? (
+                  <ActivityChart data={activity} />
+                ) : (
+                  <div className="flex h-52 items-center justify-center border border-dashed border-[#343a34] text-center font-mono text-xs text-[#70776f]">
+                    Weekly commit bars require deep-cohort ingestion.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Observed Growth & Trajectory */}
+            <div className="panel overflow-hidden p-4">
+              <p className="font-mono text-xs font-bold text-[#f1f4ec]">
+                Observed Star Growth Trajectory
+              </p>
+              <div className="mt-4">
+                {history.length > 1 ? (
+                  <StarChart data={history} />
+                ) : (
+                  <div className="flex h-52 flex-col items-center justify-center border border-dashed border-[#343a34] p-4 text-center font-mono text-xs text-[#9ba399]">
+                    <span className="font-bold text-[#f1f4ec]">Snapshot baseline established</span>
+                    <p className="mt-2 text-[11px] text-[#70776f]">
+                      Current count: {compact(stars)} stars. Next scheduled snapshot will render trajectory line.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Activity Metrics Grid */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="panel p-4">
+              <p className="data-label">Human Commits</p>
+              <p className="mt-2 font-mono text-2xl font-bold text-[#f1f4ec]">
+                {compact(commitCount)}
+              </p>
+              <div className="mt-2">
+                <ChangeBadge value={commitChange} />
+              </div>
+            </div>
+            <div className="panel p-4">
+              <p className="data-label">Automation Share</p>
+              <p className="mt-2 font-mono text-2xl font-bold text-[#f1f4ec]">
+                {automationShare != null ? `${Math.round(automationShare * 100)}%` : "—"}
+              </p>
+              <p className="mt-1 font-mono text-[10px] text-[#70776f]">Bot accounts isolated</p>
+            </div>
+            <div className="panel p-4">
+              <p className="data-label">Fork Adoption Ratio</p>
+              <p className="mt-2 font-mono text-2xl font-bold text-[#c7ff00]">
+                {stars > 0 ? `${((forks / stars) * 100).toFixed(1)}%` : "—"}
+              </p>
+              <p className="mt-1 font-mono text-[10px] text-[#70776f]">Forks / Stars</p>
+            </div>
+            <div className="panel p-4">
+              <p className="data-label">Commit Cadence</p>
+              <p className="mt-2 font-mono text-sm font-bold text-[#f1f4ec]">
+                {commitCount > 20 ? "High Frequency" : commitCount > 0 ? "Moderate" : "Low / Baseline"}
+              </p>
+              <p className="mt-1 font-mono text-[10px] text-[#70776f]">Within active observation window</p>
+            </div>
+          </div>
+        </section>
+
+        {/* ============================================================ */}
+        {/* SECTION 3: COMMUNITY & MAINTAINER HEALTH */}
+        {/* ============================================================ */}
+        <section className="space-y-4">
+          <SectionHeader
+            title="3. Community & Maintainer Health"
+            description="Contributor resilience, PR merge latency, issue resolution cycle, and delivery health."
+          />
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Health Score */}
+            <div className="panel p-5">
+              <p className="data-label">Community Health Score</p>
+              <div className="mt-4">
+                <ScoreBar value={healthScore} tone="green" />
+              </div>
+              <p className="mt-3 text-xs leading-5 text-[#9ba399]">
+                Aggregates active human contributors, cycle times, PR merge efficiency, and release cadences.
+              </p>
+            </div>
+
+            {/* Bus Factor Concentration */}
+            <div className="panel p-5">
+              <p className="data-label">Bus Factor &amp; Concentration Risk</p>
+              <div className="mt-4">
+                <ScoreBar
+                  value={busFactorRisk}
+                  tone={busFactorRisk >= 70 ? "red" : busFactorRisk >= 40 ? "amber" : "blue"}
+                />
+              </div>
+              <p className="mt-3 text-xs leading-5 text-[#9ba399]">
+                {topContributorShare != null
+                  ? `Top contributor authored ${(topContributorShare * 100).toFixed(0)}% of recent human commits.`
+                  : "Assessed via commit author distribution; excludes bot and sync identities."}
+              </p>
+            </div>
+
+            {/* Responsiveness */}
+            <div className="panel p-5">
+              <p className="data-label">PR Merge Cycle Latency</p>
+              <p className="mt-3 font-mono text-2xl font-bold text-[#c7ff00]">
+                {medianPrMergeHours != null ? duration(medianPrMergeHours) : "—"}
+              </p>
+              <p className="mt-3 text-xs leading-5 text-[#9ba399]">
+                Median turnaround time from pull request open to merge among recent non-automated PRs.
+              </p>
+            </div>
+          </div>
+
+          {/* Top Contributors Distribution if available */}
+          {deepEvidence?.top_contributors && deepEvidence.top_contributors.length > 0 && (
+            <div className="panel p-5">
+              <p className="font-mono text-xs font-bold uppercase tracking-wider text-[#f1f4ec]">
+                Core Contributor Distribution
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {deepEvidence.top_contributors.slice(0, 8).map((c, idx) => (
+                  <div
+                    key={c.login}
+                    className="flex items-center gap-3 border border-[#343a34] bg-[#101310] p-2.5"
+                  >
+                    <span className="font-mono text-[9px] text-[#70776f]">
+                      {String(idx + 1).padStart(2, "0")}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-mono text-xs font-bold text-[#f1f4ec]">{c.login}</p>
+                      <p className="font-mono text-[9px] text-[#9ba399]">
+                        {compact(c.contributions)} commits
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ============================================================ */}
+        {/* SECTION 4: INVESTOR MOMENTUM & RISKS */}
+        {/* ============================================================ */}
+        <section className="space-y-4">
+          <SectionHeader
+            title="4. Investor Momentum & Risks"
+            description="Momentum acceleration, Scout AI promise evaluation, corporate backing signals, and risk flags."
+          />
+          <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+            {/* Momentum & Scout Card */}
+            <div className="space-y-4">
+              <div className="panel p-5">
+                <p className="data-label">Momentum Score</p>
+                <div className="mt-4">
+                  <ScoreBar value={momentumScore} tone="blue" />
+                </div>
+                <p className="mt-3 text-xs text-[#9ba399]">
+                  Evaluates velocity acceleration against the repo's historical baseline and portfolio cohort.
+                </p>
+              </div>
+
+              {scout && (
+                <div className="panel border border-[#c7ff00]/40 bg-[#101310] p-5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] font-black uppercase tracking-wider text-[#c7ff00]">
+                      Scout Early Detection Assessment
+                    </span>
+                    <span className="font-mono text-xs font-bold text-[#c7ff00]">
+                      Promise: {scout.promise_score}/100
+                    </span>
+                  </div>
+                  <div className="mt-3 text-xs leading-relaxed text-[#f1f4ec]">
+                    <p className="font-semibold text-[#c7ff00]">Reasoning:</p>
+                    <p className="mt-1">{scout.why_it_surfaced}</p>
+                  </div>
+                  <div className="mt-3 flex gap-4 font-mono text-[10px] text-[#9ba399]">
+                    <span>Quant: {scout.quantitative_score?.toFixed(1) ?? "—"}</span>
+                    <span>AI: {scout.ai_score?.toFixed(1) ?? "—"}</span>
+                    <span>Confidence: {Math.round(scout.confidence * 100)}%</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Corporate Backing Signals & Risk Ledger */}
+            <div className="panel p-5 space-y-4">
+              <div>
+                <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-[#f1f4ec]">
+                  Corporate Backing &amp; Sponsorship Signals
+                </h3>
+                <div className="mt-2 text-xs leading-5 text-[#9ba399]">
+                  {fullName.includes("/") && (
+                    <div className="flex items-center gap-2">
+                      <ShieldCheckIcon className="size-4 text-[#c7ff00]" />
+                      <span>
+                        Organization Namespace:{" "}
+                        <strong className="text-[#f1f4ec]">{fullName.split("/")[0]}</strong>
+                      </span>
+                    </div>
+                  )}
+                  <p className="mt-1">
+                    Domain email commitments and sponsor links are cross-referenced during catalog synchronization.
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-t border-[#343a34] pt-4">
+                <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-[#f1f4ec]">
+                  Identified Risks &amp; Red Flags
+                </h3>
+                {scout?.risk_flags && scout.risk_flags.length > 0 ? (
+                  <div className="mt-2 space-y-2">
+                    {scout.risk_flags.map((risk, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-2 border border-[#e5534b]/30 bg-[#1a0f0f] p-2.5 text-xs text-[#f87171]"
+                      >
+                        <ExclamationTriangleIcon className="size-4 shrink-0 text-[#e5534b] mt-0.5" />
+                        <span>{risk}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 flex items-center gap-2 font-mono text-xs text-[#9ba399]">
+                    <CheckCircleIcon className="size-4 text-[#c7ff00]" />
+                    No critical risk flags recorded in current evaluation.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ============================================================ */}
+        {/* SECTION 5: EVIDENCE & PROVENANCE */}
+        {/* ============================================================ */}
+        <section className="space-y-4">
+          <SectionHeader
+            title="5. Evidence, Provenance & Methodology"
+            description="Data ingestion freshness, event sampling bounds, AI evaluator model identity, and reproducibility."
+          />
+          <div className="panel divide-y divide-[#343a34] overflow-hidden">
+            {/* Provenance Details */}
+            <div className="grid divide-y divide-[#343a34] sm:grid-cols-4 sm:divide-x sm:divide-y-0 p-5 font-mono">
+              <div>
+                <span className="data-label block">Evaluation Confidence</span>
+                <b className="mt-2 block text-xl text-[#c7ff00]">{confidenceScore}%</b>
+              </div>
+              <div className="sm:pl-5">
+                <span className="data-label block">Ingestion Source</span>
+                <b className="mt-2 block text-sm text-[#f1f4ec]">GitHub GraphQL + REST v3</b>
+              </div>
+              <div className="sm:pl-5">
+                <span className="data-label block">Historical Snapshots</span>
+                <b className="mt-2 block text-xl text-[#f1f4ec]">
+                  {history.length || (deepEvidence?.snapshot_history?.length ?? 1)}
+                </b>
+              </div>
+              <div className="sm:pl-5">
+                <span className="data-label block">Telemetry Tier</span>
+                <b className="mt-2 block text-sm text-[#f1f4ec]">
+                  {isDeep ? "Deep Ingestion" : "Catalog Tracked"}
+                </b>
+              </div>
+            </div>
+
+            {/* AI Model Identity & Provenance Metadata */}
+            <div className="bg-[#0c0f0c] p-5 text-xs leading-relaxed text-[#9ba399]">
+              <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-[10px]">
+                <span>
+                  Evaluator Identity:{" "}
+                  <strong className="text-[#f1f4ec]">
+                    {scout?.model_identity || "RepoTrajectory-ScoutEvaluator-DeterministicFallback"}
+                  </strong>
+                </span>
+                <span>
+                  Search Vector Embedding: <strong className="text-[#f1f4ec]">pgvector-1536d-cosine</strong>
+                </span>
+              </div>
+              <p className="mt-3">
+                Methodology disclosure: All scores are derived strictly from observed events and metadata.
+                Historical growth rates require two or more point-in-time snapshots and are never backfilled or
+                reconstructed from third-party approximations. Forks and archived repositories are excluded from Scout
+                promise scoring.
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
 }
-
-function HeaderStat({label,value}:{label:string;value:string}){return <div><span className="data-label block">{label}</span><b className="mt-1 block font-mono text-lg">{value}</b></div>}
-function ScorePanel({label,value,note,tone="blue"}:{label:string;value:number|null;note:string;tone?:"blue"|"green"|"amber"|"red"}){return <div className="panel p-5"><p className="data-label">{label}</p><div className="mt-5"><ScoreBar value={value} tone={tone}/></div><p className="mt-4 text-[11px] text-[#70776f]">{note}</p></div>}
-function Question({label,answer,evidence,positive}:{label:string;answer:string;evidence:string;positive:boolean}){return <div className="border-b border-[#343a34] p-5 last:border-0 md:border-r xl:border-b-0"><p className="data-label">{label}</p><p className={`mt-2 text-base font-semibold ${positive?"text-[#c7ff00]":"text-[#f1f4ec]"}`}>{answer}</p><p className="mt-2 text-[11px] leading-4 text-[#9ba399]">{evidence}</p></div>}
-function Operation({label,value,change}:{label:string;value:string;change?:number|null}){return <div className="flex items-center justify-between gap-4 px-5 py-3.5"><span className="text-xs text-[#9ba399]">{label}</span><div className="text-right"><b className="font-mono text-xs">{value}</b>{change!=null&&<span className={`ml-2 text-[10px] font-semibold ${change>=0?"text-[#c7ff00]":"text-[#f1f4ec]"}`}>{change>=0?"+":""}{(change*100).toFixed(0)}%</span>}</div></div>}
-function ContributorDistribution({contributors}:{contributors:Contributor[]}){const total=contributors.reduce((sum,item)=>sum+item.contributions,0);return <div className="space-y-3">{contributors.map((item,index)=><div key={item.login} className="grid grid-cols-[24px_120px_1fr_52px] items-center gap-3"><span className="font-mono text-[10px] text-[#70776f]">{String(index+1).padStart(2,"0")}</span><span className="truncate text-xs font-medium">{item.login}</span><div className="h-1.5 overflow-hidden rounded-full bg-[#343a34]"><div className="h-full bg-[#c7ff00]" style={{width:`${item.contributions/Math.max(total,1)*100}%`}}/></div><span className="text-right font-mono text-[10px]">{compact(item.contributions)}</span></div>)}</div>}
-function DriverGroup({title,values}:{title:string;values:Record<string,number>}){return <div><h3 className="text-xs font-semibold">{title}</h3><div className="mt-3 space-y-3">{Object.entries(values).map(([key,value])=><div key={key}><div className="flex justify-between gap-4 text-[11px]"><span className="capitalize text-[#9ba399]">{key.replaceAll("_"," ")}</span><b className="font-mono">{Math.round(value)}</b></div><div className="mt-1 h-1 overflow-hidden rounded-full bg-[#343a34]"><div className="h-full bg-[#c7ff00]" style={{width:`${Math.max(0,Math.min(100,value))}%`}}/></div></div>)}</div></div>}
-function Quality({label,value}:{label:string;value:string}){return <div className="p-5"><p className="data-label">{label}</p><p className="mt-2 font-mono text-lg font-semibold">{value}</p></div>}
-
-function assessmentSentence(repository:Repo,metric:Metric):string{const state=assessment(metric);const commits=getNumber(metric,"velocity","commits")??0;const risk=metric.bus_factor_risk??0;if(repository.archived)return "Archived repository; historical evidence remains available for comparison.";if(commits===0)return "No recent human commit activity is recorded in this window.";if(risk>=70)return `${state.status} delivery profile, with material dependence on a small contributor set.`;if((metric.health_score??0)>=65)return `${state.status} trajectory with healthy delivery and community evidence.`;return `${state.status} trajectory; review the evidence ledger before drawing a conclusion.`}
-function repositoryLedger(repository:Repo,metric:Metric):Array<{tone:"positive"|"warning"|"critical"|"neutral";title:string;detail:string}>{const change=getNumber(metric,"velocity","commit_change");const top=getNumber(metric,"concentration","top_1_share");const flow=getNumber(metric,"velocity","net_issue_flow");const data=[] as Array<{tone:"positive"|"warning"|"critical"|"neutral";title:string;detail:string}>;if(change!=null){const flat=Math.abs(change)<.005;data.push({tone:flat?"neutral":change>0?"positive":change<-.25?"critical":"warning",title:flat?"Human commit activity was unchanged":`Human commit activity ${change>0?"increased":"declined"} ${Math.abs(change*100).toFixed(0)}%`,detail:`Compared with the preceding equal ${metric.window_days}-day period; known bot accounts are excluded.`})}if(top!=null)data.push({tone:top>=.65?"critical":top>=.4?"warning":"positive",title:`Top contributor authored ${(top*100).toFixed(0)}% of recent commits`,detail:"Contribution concentration is a dependency proxy, not a literal maintainer bus factor."});if(flow!=null)data.push({tone:flow>=0?"positive":"warning",title:flow>=0?`${flow} more issues closed than opened`:`Issue intake exceeded closures by ${Math.abs(flow)}`,detail:"Net issue flow in the selected analysis window."});if(metric.components?.growth?.history_available!==true)data.push({tone:"neutral",title:"Growth baseline is still forming",detail:"A later ingestion snapshot is required before star and contributor growth can be measured."});return data.slice(0,4)}

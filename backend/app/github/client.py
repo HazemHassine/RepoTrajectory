@@ -99,6 +99,112 @@ class GitHubClient:
             raise GitHubAPIError(response.status_code, message)
         raise AssertionError("unreachable")
 
+    async def post(self, path: str, json_data: dict[str, Any] | None = None) -> httpx.Response:
+        for attempt in range(self.max_retries + 1):
+            async with self._request_lock:
+                await self._respect_limits()
+                response = await self.client.post(path, json=json_data)
+                self._last_request_at = monotonic()
+                self._update_rate_state(response)
+            remaining = response.headers.get("x-ratelimit-remaining")
+            log.debug("github_post", path=path, status=response.status_code, remaining=remaining)
+            if response.status_code < 400:
+                return response
+            if response.status_code == 403 and remaining == "0":
+                raise GitHubRateLimitError(self.rate.reset_at)
+            secondary_limited = response.status_code in {403, 429} and (
+                response.headers.get("retry-after") is not None
+                or "secondary rate limit" in response.text.casefold()
+            )
+            if (
+                response.status_code in {429, 500, 502, 503, 504} or secondary_limited
+            ) and attempt < self.max_retries:
+                retry_after = response.headers.get("retry-after")
+                delay = min(float(retry_after), 60) if retry_after else min(2**attempt, 30)
+                await asyncio.sleep(delay)
+                continue
+            try:
+                message = response.json().get("message", response.text)
+            except ValueError:
+                message = response.text
+            raise GitHubAPIError(response.status_code, message)
+        raise AssertionError("unreachable")
+
+    async def graphql(self, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
+        response = await self.post("/graphql", json_data={"query": query, "variables": variables or {}})
+        payload = response.json()
+        if "errors" in payload and not payload.get("data"):
+            raise GitHubAPIError(200, str(payload["errors"]))
+        return payload
+
+    async def graphql_batch_repositories(
+        self, repositories: list[tuple[str, str]]
+    ) -> dict[str, dict[str, Any]]:
+        """Batch fetch lightweight metadata for up to 50 repositories in a single GraphQL query."""
+        if not repositories:
+            return {}
+        query_parts = ["query {"]
+        for idx, (owner, name) in enumerate(repositories):
+            # Escape owner and name
+            safe_owner = owner.replace('"', '\\"')
+            safe_name = name.replace('"', '\\"')
+            query_parts.append(
+                f"""
+                r{idx}: repository(owner: "{safe_owner}", name: "{safe_name}") {{
+                    databaseId
+                    name
+                    owner {{ login }}
+                    description
+                    stargazerCount
+                    forkCount
+                    watchers {{ totalCount }}
+                    issues(states: OPEN) {{ totalCount }}
+                    pushedAt
+                    isArchived
+                    isFork
+                    primaryLanguage {{ name }}
+                    licenseInfo {{ spdxId }}
+                    defaultBranchRef {{ name }}
+                    repositoryTopics(first: 10) {{
+                        nodes {{ topic {{ name }} }}
+                    }}
+                }}
+                """
+            )
+        query_parts.append("}")
+        query = "\n".join(query_parts)
+        payload = await self.graphql(query)
+        data = payload.get("data", {})
+        results: dict[str, dict[str, Any]] = {}
+        for idx, (owner, name) in enumerate(repositories):
+            repo_data = data.get(f"r{idx}")
+            if repo_data and repo_data.get("databaseId"):
+                full_name = f"{repo_data['owner']['login']}/{repo_data['name']}"
+                topics = [
+                    node["topic"]["name"]
+                    for node in (repo_data.get("repositoryTopics") or {}).get("nodes", [])
+                    if node.get("topic")
+                ]
+                results[full_name] = {
+                    "id": repo_data["databaseId"],
+                    "owner": {"login": repo_data["owner"]["login"]},
+                    "name": repo_data["name"],
+                    "full_name": full_name,
+                    "description": repo_data.get("description"),
+                    "stargazers_count": repo_data.get("stargazerCount", 0),
+                    "forks_count": repo_data.get("forkCount", 0),
+                    "subscribers_count": (repo_data.get("watchers") or {}).get("totalCount", 0),
+                    "open_issues_count": (repo_data.get("issues") or {}).get("totalCount", 0),
+                    "pushed_at": repo_data.get("pushedAt"),
+                    "archived": repo_data.get("isArchived", False),
+                    "fork": repo_data.get("isFork", False),
+                    "language": (repo_data.get("primaryLanguage") or {}).get("name"),
+                    "license": {"spdx_id": (repo_data.get("licenseInfo") or {}).get("spdxId")},
+                    "default_branch": (repo_data.get("defaultBranchRef") or {}).get("name", "main"),
+                    "topics": topics,
+                }
+        return results
+
     async def _respect_limits(self) -> None:
         effective_reserve = (
             min(self.rate_limit_reserve, max(1, int(self.rate.limit * 0.02)))

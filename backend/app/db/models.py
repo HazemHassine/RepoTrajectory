@@ -14,6 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from pgvector.sqlalchemy import Vector
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -370,3 +371,189 @@ class AdminAuditLog(Base):
     outcome: Mapped[str] = mapped_column(String(30), index=True)
     remote_address: Mapped[str | None] = mapped_column(String(100))
     details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+
+class CatalogRepository(Base):
+    """Canonical catalog repository keyed by GitHub ID.
+
+    Represents the rolling candidate pool (up to 50K), the active public directory
+    (exactly 10K), and the deep-analysis cohort (500).
+    """
+
+    __tablename__ = "catalog_repositories"
+
+    github_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    owner: Mapped[str] = mapped_column(String(255), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    full_name: Mapped[str] = mapped_column(String(511), unique=True, index=True)
+    description: Mapped[str | None] = mapped_column(Text)
+    primary_language: Mapped[str | None] = mapped_column(String(100), index=True)
+    license: Mapped[str | None] = mapped_column(String(100))
+    default_branch: Mapped[str] = mapped_column(String(255), default="main")
+    stars: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    forks: Mapped[int] = mapped_column(Integer, default=0)
+    watchers: Mapped[int] = mapped_column(Integer, default=0)
+    open_issues: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    pushed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_fork: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Explicit three tiers
+    tier: Mapped[str] = mapped_column(String(30), default="candidate", index=True)
+    is_directory: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    is_deep: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+    # Classification & Eligibility
+    classification: Mapped[str] = mapped_column(String(50), default="unclassified", index=True)
+    classification_confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    rejection_reason: Mapped[str | None] = mapped_column(Text)
+    topics: Mapped[list[str]] = mapped_column(JSON, default=list)
+
+    # Multi-factor ranking & scoring
+    activity_score: Mapped[float] = mapped_column(Float, default=0.0)
+    popularity_score: Mapped[float] = mapped_column(Float, default=0.0)
+    freshness_score: Mapped[float] = mapped_column(Float, default=0.0)
+    maintenance_score: Mapped[float] = mapped_column(Float, default=0.0)
+    selection_score: Mapped[float] = mapped_column(Float, default=0.0, index=True)
+
+    # Scout promise score (0-100) and eligibility
+    scout_eligible: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    promise_score: Mapped[float | None] = mapped_column(Float, index=True)
+
+    # Evidence & Hashes
+    content_hash: Mapped[str | None] = mapped_column(String(64))
+    readme_excerpt: Mapped[str | None] = mapped_column(Text)
+    last_discovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    last_observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    next_refresh_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+
+    # Link to deep hydrated evidence if in 500 cohort
+    repository_id: Mapped[int | None] = mapped_column(
+        ForeignKey("repositories.id", ondelete="SET NULL"), unique=True, index=True
+    )
+
+    # Granular source provenance metadata
+    provenance: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+    __table_args__ = (
+        Index("ix_catalog_dir_selection", "is_directory", "selection_score"),
+        Index("ix_catalog_scout_promise", "scout_eligible", "promise_score"),
+        Index("ix_catalog_tier_pushed", "tier", "pushed_at"),
+        Index("ix_catalog_lang_stars", "primary_language", "stars"),
+    )
+
+
+class RepositorySearchDocument(Base):
+    __tablename__ = "repository_search_documents"
+
+    github_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("catalog_repositories.github_id", ondelete="CASCADE"), primary_key=True
+    )
+    full_name: Mapped[str] = mapped_column(String(511), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    owner: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str | None] = mapped_column(Text)
+    topics_text: Mapped[str] = mapped_column(Text, default="")
+    primary_language: Mapped[str | None] = mapped_column(String(100), index=True)
+    license: Mapped[str | None] = mapped_column(String(100))
+    readme_text: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class RepositorySignalSnapshot(Base):
+    """Daily lightweight signal snapshots for all catalog members."""
+
+    __tablename__ = "repository_signal_snapshots"
+
+    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    github_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("catalog_repositories.github_id", ondelete="CASCADE"), index=True
+    )
+    captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    stars: Mapped[int] = mapped_column(Integer, default=0)
+    forks: Mapped[int] = mapped_column(Integer, default=0)
+    open_issues: Mapped[int] = mapped_column(Integer, default=0)
+    watchers: Mapped[int] = mapped_column(Integer, default=0)
+    velocity_score: Mapped[float] = mapped_column(Float, default=0.0)
+    source: Mapped[str] = mapped_column(String(50), default="github_rest")
+
+    __table_args__ = (
+        Index("ix_signal_snapshot_repo_captured", "github_id", "captured_at"),
+    )
+
+
+class RepositoryEmbedding(Base):
+    __tablename__ = "repository_embeddings"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    github_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("catalog_repositories.github_id", ondelete="CASCADE"), index=True
+    )
+    embedding_version: Mapped[str] = mapped_column(String(50), index=True)
+    model: Mapped[str] = mapped_column(String(100))
+    embedding: Mapped[Any] = mapped_column(Vector(1536))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_embedding_repo_version", "github_id", "embedding_version", unique=True),
+    )
+
+
+class ScoutAssessment(Base):
+    """Versioned Scout assessments combining quantitative evidence and structured AI evaluation."""
+
+    __tablename__ = "scout_assessments"
+
+    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    github_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("catalog_repositories.github_id", ondelete="CASCADE"), index=True
+    )
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    promise_score: Mapped[float] = mapped_column(Float, index=True)
+    quantitative_score: Mapped[float] = mapped_column(Float, default=0.0)
+    ai_score: Mapped[float] = mapped_column(Float, default=0.0)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    rationale: Mapped[str] = mapped_column(Text, default="")
+    why_it_surfaced: Mapped[str] = mapped_column(Text, default="")
+    supporting_facts: Mapped[list[str]] = mapped_column(JSON, default=list)
+    uncertainty: Mapped[str | None] = mapped_column(Text)
+    risk_flags: Mapped[list[str]] = mapped_column(JSON, default=list)
+    score_components: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    evidence_references: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    model_identity: Mapped[str] = mapped_column(String(100), default="")
+    prompt_version: Mapped[str] = mapped_column(String(50), default="v1")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    is_current: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
+    __table_args__ = (
+        Index("ix_scout_repo_current", "github_id", "is_current"),
+        Index("ix_scout_current_promise", "is_current", "promise_score"),
+    )
+
+
+class RepositoryProvenance(Base):
+    __tablename__ = "repository_provenance"
+
+    id: Mapped[int] = mapped_column(BigInteger().with_variant(Integer, "sqlite"), primary_key=True, autoincrement=True)
+    github_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    field_name: Mapped[str] = mapped_column(String(100), index=True)
+    source: Mapped[str] = mapped_column(String(50))
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
+    __table_args__ = (
+        Index("ix_provenance_repo_field", "github_id", "field_name"),
+    )
+
+
+class QueryEmbeddingCache(Base):
+    __tablename__ = "query_embedding_cache"
+
+    normalized_query: Mapped[str] = mapped_column(String(511), primary_key=True)
+    model: Mapped[str] = mapped_column(String(100), primary_key=True)
+    embedding: Mapped[list[float]] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)

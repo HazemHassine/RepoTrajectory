@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: github_analytics
       POSTGRES_PASSWORD: github_analytics
@@ -9,11 +9,30 @@ services:
       - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - backups_data:/backups
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U github_analytics"]
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - internal
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+    restart: unless-stopped
 
   api:
     build:
@@ -22,17 +41,22 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://github_analytics:github_analytics@postgres:5432/github_analytics
+      REDIS_URL: redis://redis:6379/0
     command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     expose:
       - "8000"
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
       timeout: 5s
       retries: 10
+    networks:
+      - internal
     restart: unless-stopped
 
   collector:
@@ -40,10 +64,13 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+asyncpg://github_analytics:github_analytics@postgres:5432/github_analytics
+      REDIS_URL: redis://redis:6379/0
     command: ["python", "-m", "app.cli", "collector"]
     depends_on:
       api:
         condition: service_healthy
+    networks:
+      - internal
     restart: unless-stopped
 
   web:
@@ -52,12 +79,41 @@ services:
     image: repotrajectory-web:local
     environment:
       API_INTERNAL_URL: http://api:8000
-    ports:
-      - "127.0.0.1:${WEB_PORT:-10100}:3000"
+    expose:
+      - "3000"
     depends_on:
       api:
         condition: service_healthy
+    networks:
+      - internal
+      - public
     restart: unless-stopped
+
+  proxy:
+    image: caddy:2-alpine
+    ports:
+      - "${HTTP_PORT:-10100}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+    networks:
+      - internal
+      - public
+    restart: unless-stopped
+
+networks:
+  internal:
+    internal: true
+  public:
+    driver: bridge
 
 volumes:
   postgres_data:
+  backups_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
