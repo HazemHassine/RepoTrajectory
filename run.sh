@@ -81,10 +81,15 @@ port_in_use() {
   fi
 }
 
-existing_container="$(docker compose ps -a -q web 2>/dev/null | head -n 1)"
+existing_container="$(docker compose ps -a -q proxy 2>/dev/null | head -n 1)"
+port_binding="80/tcp"
+if [[ -z "$existing_container" ]]; then
+  existing_container="$(docker compose ps -a -q web 2>/dev/null | head -n 1)"
+  port_binding="3000/tcp"
+fi
 web_port=""
 if [[ -n "$existing_container" ]]; then
-  existing_port="$(docker inspect --format '{{with (index .HostConfig.PortBindings "3000/tcp")}}{{(index . 0).HostPort}}{{end}}' "$existing_container" 2>/dev/null || true)"
+  existing_port="$(docker inspect --format "{{with (index .HostConfig.PortBindings \"$port_binding\")}}{{(index . 0).HostPort}}{{end}}" "$existing_container" 2>/dev/null || true)"
   running="$(docker inspect --format '{{.State.Running}}' "$existing_container" 2>/dev/null || true)"
   if [[ "$existing_port" =~ ^[0-9]+$ ]] \
     && (( existing_port >= 10100 && existing_port <= 10110 )) \
@@ -108,6 +113,7 @@ if [[ -z "$web_port" ]]; then
 fi
 
 export WEB_PORT="$web_port"
+export HTTP_PORT="$web_port"
 echo "Starting RepoTrajectory on the first available app port: $WEB_PORT"
 docker compose up -d --build --remove-orphans
 
