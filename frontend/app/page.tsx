@@ -1,19 +1,22 @@
 import {
   ArrowRightIcon,
-  CheckCircleIcon,
   CodeBracketIcon,
   ExclamationTriangleIcon,
-  EyeIcon,
   FireIcon,
   MagnifyingGlassIcon,
-  ShieldCheckIcon,
   SparklesIcon,
   UserGroupIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
+import React from "react";
 
-import { EmptyState, PageHeader, SectionHeader } from "@/components/ui";
-import { api, type CatalogRepo, type Facets, type ScoutFeedItem } from "@/lib/api";
+import { EmptyState, PageHeader } from "@/components/ui";
+import {
+  api,
+  type CatalogRepo,
+  type Facets,
+  type ScoutFeedItem,
+} from "@/lib/api";
 import { compact, relativeDate } from "@/lib/format";
 
 export default async function Home() {
@@ -38,14 +41,16 @@ export default async function Home() {
   return (
     <main className="min-h-screen pb-16">
       <PageHeader
-        eyebrow="Open Source Intelligence"
         title="RepoTrajectory"
-        description="Public software directory indexing 10,000 active projects, backed by a rolling candidate pool and an evidence-based AI Scout feed."
+        description="Evidence-backed open-source repository health, momentum, delivery velocity, and community resilience analytics."
         action={
-          <div className="flex flex-col gap-1.5 font-mono text-[10px]">
-            <span className="text-[#9ba399]">DIRECTORY SIZE</span>
-            <span className="text-xl font-bold text-[#c7ff00]">10,000 REPOS</span>
-            <span className="text-[9px] text-[#70776f]">25% MAX PER LANGUAGE</span>
+          <div className="flex items-center gap-3">
+            <Link href="/repositories" className="button-primary">
+              Explore Repositories
+            </Link>
+            <Link href="/compare" className="button-secondary">
+              Compare
+            </Link>
           </div>
         }
       />
@@ -53,48 +58,44 @@ export default async function Home() {
       <div className="mx-auto max-w-[1600px] space-y-10 px-4 py-8 md:px-6 xl:px-8">
         {unavailable ? (
           <EmptyState
-            title="Backend API Offline"
-            description="Start the RepoTrajectory backend service on port 8000 to browse the 10K directory and Scout feed."
+            title="Backend Service Offline"
+            description="Start the RepoTrajectory backend service on port 8000 to query repository intelligence and live evaluation feeds."
           />
         ) : (
           <>
-            {/* Search Hero & Category Pills */}
-            <section className="relative overflow-hidden border border-[#343a34] bg-[#101310] p-6 md:p-8">
+            {/* Search Hero */}
+            <section className="panel p-6 md:p-8">
               <div className="max-w-3xl space-y-4">
-                <span className="inline-flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-[.14em] text-[#c7ff00]">
-                  <SparklesIcon className="size-3.5" />
-                  Hybrid Semantic & Keyword Retrieval
-                </span>
-                <h2 className="text-2xl font-bold text-[#f1f4ec] md:text-3xl">
-                  Discover software by purpose, not just star count
+                <h2 className="text-2xl font-bold text-[#ffffff] md:text-3xl">
+                  Discover software by purpose, activity, and health
                 </h2>
-                <p className="font-mono text-xs leading-5 text-[#9ba399]">
-                  Search using natural language or technical keywords. Our dual-branch engine combines
-                  lexical full-text retrieval with pgvector semantic similarity.
+                <p className="text-sm leading-relaxed text-[#9a9a9a]">
+                  Search across open-source software using natural language or technical keywords. Combine full-text search with semantic similarity.
                 </p>
 
-                <form action="/repositories" method="GET" className="mt-4 flex flex-col gap-2 sm:flex-row">
-                  <div className="relative flex flex-1 items-center border border-[#343a34] bg-[#080a08] px-3 focus-within:border-[#c7ff00]">
-                    <MagnifyingGlassIcon className="size-4 text-[#70776f]" />
+                <form
+                  action="/repositories"
+                  method="GET"
+                  className="mt-4 flex flex-col gap-2.5 sm:flex-row"
+                >
+                  <div className="relative flex flex-1 items-center rounded-md border border-[#262626] bg-[#090909] px-3 focus-within:border-[#ccf200]">
+                    <MagnifyingGlassIcon className="size-4 text-[#646464]" />
                     <input
                       name="q"
-                      placeholder="e.g. high-performance rust web framework or distributed consensus"
-                      className="min-w-0 flex-1 bg-transparent px-2.5 py-3 font-mono text-xs text-[#f1f4ec] placeholder:text-[#565d56] focus:outline-none"
+                      placeholder="e.g. rust web framework, distributed consensus, or developer tools"
+                      className="min-w-0 flex-1 bg-transparent px-2.5 py-2.5 font-mono text-xs text-[#ffffff] placeholder:text-[#646464] focus:outline-none"
                     />
                   </div>
-                  <button
-                    type="submit"
-                    className="flex items-center justify-center gap-2 border border-[#c7ff00] bg-[#c7ff00] px-6 py-3 font-mono text-xs font-bold text-[#080a08] transition hover:bg-[#b0e600]"
-                  >
-                    <span>Search Index</span>
-                    <ArrowRightIcon className="size-4" />
+                  <button type="submit" className="button-primary">
+                    <span>Search</span>
+                    <ArrowRightIcon className="size-3.5" />
                   </button>
                 </form>
 
-                {/* Trending tags */}
+                {/* Popular tags */}
                 <div className="flex flex-wrap items-center gap-2 pt-2">
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-[#565d56]">
-                    Trending:
+                  <span className="font-mono text-[10px] text-[#646464]">
+                    Popular topics:
                   </span>
                   {[
                     "developer-tools",
@@ -108,7 +109,7 @@ export default async function Home() {
                     <Link
                       key={tag}
                       href={`/repositories?q=${encodeURIComponent(tag)}`}
-                      className="border border-[#343a34] bg-[#080a08] px-2.5 py-1 font-mono text-[9px] text-[#9ba399] transition hover:border-[#c7ff00] hover:text-[#c7ff00]"
+                      className="rounded border border-[#222222] bg-[#111111] px-2.5 py-1 font-mono text-[10px] text-[#9a9a9a] transition hover:border-[#ccf200] hover:text-[#ccf200]"
                     >
                       #{tag}
                     </Link>
@@ -117,119 +118,118 @@ export default async function Home() {
               </div>
             </section>
 
-            {/* Three Analytical Lenses */}
+            {/* Analytical Lenses */}
             <section className="space-y-4">
-              <div className="flex items-center justify-between border-b border-[#343a34] pb-2">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-[.14em] text-[#9ba399]">
-                  01 // Analytical Perspectives
+              <div className="flex items-center justify-between border-b border-[#222222] pb-2.5">
+                <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-[#9a9a9a]">
+                  Analytical Perspectives
+                </h3>
+                <span className="font-mono text-[10px] text-[#646464]">
+                  Select a focus area
                 </span>
-                <span className="font-mono text-[9px] text-[#565d56]">CHOOSE YOUR WORKSPACE LENS</span>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
                 <Link
                   href="/repositories?lens=developer"
-                  className="group relative border border-[#343a34] bg-[#101310] p-5 transition hover:border-[#c7ff00]"
+                  className="panel group p-5 transition hover:border-[#333333]"
                 >
-                  <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase text-[#c7ff00]">
+                  <div className="flex items-center gap-2 font-mono text-xs font-semibold text-[#ccf200]">
                     <CodeBracketIcon className="size-4" />
-                    <span>Developer Lens</span>
+                    <span>Developer Focus</span>
                   </div>
-                  <h3 className="mt-2 text-lg font-bold text-[#f1f4ec] group-hover:text-[#c7ff00]">
-                    Architecture & APIs
-                  </h3>
-                  <p className="mt-2 text-xs leading-5 text-[#9ba399]">
-                    Inspect technical classifications, primary language footprints, topics, open issue
-                    burndown, and default branch health.
+                  <h4 className="mt-2 text-base font-bold text-[#ffffff] group-hover:text-[#ccf200]">
+                    Architecture & Technology
+                  </h4>
+                  <p className="mt-2 text-xs leading-relaxed text-[#9a9a9a]">
+                    Inspect technical classifications, language footprints, issue burndown, and default branch activity.
                   </p>
-                  <span className="mt-4 inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-[#70776f] group-hover:text-[#c7ff00]">
-                    Open developer directory →
+                  <span className="mt-4 inline-flex items-center gap-1 font-mono text-[10px] text-[#646464] group-hover:text-[#ccf200]">
+                    Browse developer view →
                   </span>
                 </Link>
 
                 <Link
                   href="/repositories?lens=maintainer"
-                  className="group relative border border-[#343a34] bg-[#101310] p-5 transition hover:border-[#c7ff00]"
+                  className="panel group p-5 transition hover:border-[#333333]"
                 >
-                  <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase text-[#c7ff00]">
+                  <div className="flex items-center gap-2 font-mono text-xs font-semibold text-[#ccf200]">
                     <UserGroupIcon className="size-4" />
-                    <span>Maintainer Lens</span>
+                    <span>Maintainer Focus</span>
                   </div>
-                  <h3 className="mt-2 text-lg font-bold text-[#f1f4ec] group-hover:text-[#c7ff00]">
-                    Sustainability & Risks
-                  </h3>
-                  <p className="mt-2 text-xs leading-5 text-[#9ba399]">
-                    Examine bus factor concentration, PR merge latency, community responsiveness, and
-                    prevent maintainer burnout.
+                  <h4 className="mt-2 text-base font-bold text-[#ffffff] group-hover:text-[#ccf200]">
+                    Sustainability & Resilience
+                  </h4>
+                  <p className="mt-2 text-xs leading-relaxed text-[#9a9a9a]">
+                    Examine contributor concentration, PR merge latency, community responsiveness, and maintenance workload.
                   </p>
-                  <span className="mt-4 inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-[#70776f] group-hover:text-[#c7ff00]">
-                    Open maintainer directory →
+                  <span className="mt-4 inline-flex items-center gap-1 font-mono text-[10px] text-[#646464] group-hover:text-[#ccf200]">
+                    Browse maintainer view →
                   </span>
                 </Link>
 
                 <Link
                   href="/repositories?lens=investor"
-                  className="group relative border border-[#343a34] bg-[#101310] p-5 transition hover:border-[#c7ff00]"
+                  className="panel group p-5 transition hover:border-[#333333]"
                 >
-                  <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase text-[#c7ff00]">
+                  <div className="flex items-center gap-2 font-mono text-xs font-semibold text-[#ccf200]">
                     <FireIcon className="size-4" />
-                    <span>Investor Lens</span>
+                    <span>Growth Focus</span>
                   </div>
-                  <h3 className="mt-2 text-lg font-bold text-[#f1f4ec] group-hover:text-[#c7ff00]">
-                    Growth & Trajectory
-                  </h3>
-                  <p className="mt-2 text-xs leading-5 text-[#9ba399]">
-                    Identify breakout adoption acceleration, star momentum, under-the-radar promise scores,
-                    and ecosystem inflection points.
+                  <h4 className="mt-2 text-base font-bold text-[#ffffff] group-hover:text-[#ccf200]">
+                    Momentum & Trajectory
+                  </h4>
+                  <p className="mt-2 text-xs leading-relaxed text-[#9a9a9a]">
+                    Identify adoption acceleration, star momentum, under-the-radar promise scores, and inflection points.
                   </p>
-                  <span className="mt-4 inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-[#70776f] group-hover:text-[#c7ff00]">
-                    Open investor directory →
+                  <span className="mt-4 inline-flex items-center gap-1 font-mono text-[10px] text-[#646464] group-hover:text-[#ccf200]">
+                    Browse growth view →
                   </span>
                 </Link>
               </div>
             </section>
 
-            {/* AI Scout Picks (Under-the-radar discoveries) */}
+            {/* Scout Discoveries */}
             <section className="space-y-4">
-              <div className="flex items-center justify-between border-b border-[#343a34] pb-2">
+              <div className="flex items-center justify-between border-b border-[#222222] pb-2.5">
                 <div className="flex items-center gap-2">
-                  <SparklesIcon className="size-4 text-[#c7ff00]" />
-                  <span className="font-mono text-[10px] font-bold uppercase tracking-[.14em] text-[#9ba399]">
-                    02 // AI Scout Feed Picks
-                  </span>
+                  <SparklesIcon className="size-4 text-[#ccf200]" />
+                  <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-[#9a9a9a]">
+                    Scout Discoveries
+                  </h3>
                 </div>
                 <Link
                   href="/scout"
-                  className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#c7ff00] hover:underline"
+                  className="font-mono text-[10px] font-semibold text-[#ccf200] hover:underline"
                 >
                   View full Scout feed ({scoutPicks.length}+ picks) →
                 </Link>
               </div>
 
               {scoutPicks.length === 0 ? (
-                <div className="border border-[#343a34] bg-[#101310] p-6 text-center font-mono text-xs text-[#70776f]">
-                  No Scout evaluations generated yet. Trigger daily scout batch in the background.
+                <div className="panel p-6 text-center font-mono text-xs text-[#646464]">
+                  No Scout evaluations generated yet.
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {scoutPicks.map((item) => (
                     <div
                       key={item.full_name}
-                      className="flex flex-col justify-between border border-[#343a34] bg-[#101310] p-5 transition hover:border-[#697168]"
+                      className="panel flex flex-col justify-between p-5 transition hover:border-[#333333]"
                     >
                       <div>
                         <div className="flex items-start justify-between gap-2">
                           <Link
                             href={`/repositories/${item.owner}/${item.name}`}
-                            className="font-mono text-sm font-bold text-[#f1f4ec] hover:text-[#c7ff00]"
+                            className="font-mono text-sm font-bold text-[#ffffff] hover:text-[#ccf200]"
                           >
                             {item.full_name}
                           </Link>
-                          <span className="inline-flex items-center gap-1 border border-[#c7ff00] bg-[#c7ff00]/10 px-2 py-0.5 font-mono text-[10px] font-bold text-[#c7ff00]">
-                            ★ {item.promise_score} PROMISE
+                          <span className="inline-flex items-center gap-1 rounded border border-[#ccf200]/40 bg-[#ccf200]/10 px-2 py-0.5 font-mono text-[10px] font-bold text-[#ccf200]">
+                            ★ {item.promise_score} Promise
                           </span>
                         </div>
 
-                        <div className="mt-2 flex items-center gap-3 font-mono text-[9px] text-[#70776f]">
+                        <div className="mt-2 flex items-center gap-3 font-mono text-[10px] text-[#646464]">
                           <span>{item.primary_language || "General"}</span>
                           <span>·</span>
                           <span>{item.stars} stars</span>
@@ -237,22 +237,27 @@ export default async function Home() {
                           <span>Updated {relativeDate(item.pushed_at)}</span>
                         </div>
 
-                        <p className="mt-3 text-xs leading-5 text-[#b9c0b7]">
+                        <p className="mt-3 text-xs leading-relaxed text-[#9a9a9a]">
                           {item.description || "No description provided."}
                         </p>
 
-                        <div className="mt-4 border-l-2 border-[#c7ff00] bg-[#080a08] p-3">
-                          <p className="font-mono text-[10px] font-semibold text-[#c7ff00]">
-                            WHY IT SURFACED:
+                        <div className="mt-3 rounded-md border-l-2 border-[#ccf200] bg-[#050505] p-3">
+                          <p className="font-mono text-[9px] font-semibold text-[#ccf200]">
+                            SURFACING RATIONALE:
                           </p>
-                          <p className="mt-1 text-xs text-[#f1f4ec]">{item.why_it_surfaced}</p>
+                          <p className="mt-1 text-xs text-[#ffffff]">
+                            {item.why_it_surfaced}
+                          </p>
                         </div>
 
                         {item.supporting_facts.length > 0 && (
                           <div className="mt-3 space-y-1">
                             {item.supporting_facts.slice(0, 2).map((fact, idx) => (
-                              <div key={idx} className="flex items-center gap-1.5 font-mono text-[10px] text-[#9ba399]">
-                                <span className="size-1 bg-[#c7ff00]" />
+                              <div
+                                key={idx}
+                                className="flex items-center gap-1.5 font-mono text-[10px] text-[#9a9a9a]"
+                              >
+                                <span className="size-1 rounded-full bg-[#ccf200]" />
                                 <span>{fact}</span>
                               </div>
                             ))}
@@ -264,9 +269,9 @@ export default async function Home() {
                             {item.risk_flags.map((flag, idx) => (
                               <span
                                 key={idx}
-                                className="inline-flex items-center gap-1 border border-[#343a34] bg-[#080a08] px-2 py-0.5 font-mono text-[8px] text-[#9ba399]"
+                                className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-mono text-[9px] text-amber-300"
                               >
-                                <ExclamationTriangleIcon className="size-2.5 text-[#70776f]" />
+                                <ExclamationTriangleIcon className="size-2.5" />
                                 {flag}
                               </span>
                             ))}
@@ -274,13 +279,13 @@ export default async function Home() {
                         )}
                       </div>
 
-                      <div className="mt-4 pt-3 border-t border-[#343a34] flex items-center justify-between font-mono text-[9px] text-[#70776f]">
+                      <div className="mt-4 flex items-center justify-between border-t border-[#222222] pt-3 font-mono text-[10px] text-[#646464]">
                         <span>Confidence: {Math.round(item.confidence * 100)}%</span>
                         <Link
                           href={`/repositories/${item.owner}/${item.name}`}
-                          className="text-[#c7ff00] hover:underline"
+                          className="text-[#ccf200] hover:underline"
                         >
-                          View Repository Profile →
+                          View Profile →
                         </Link>
                       </div>
                     </div>
@@ -289,24 +294,24 @@ export default async function Home() {
               )}
             </section>
 
-            {/* 10K Directory Spotlight Table */}
+            {/* Featured Repositories Table */}
             <section className="space-y-4">
-              <div className="flex items-center justify-between border-b border-[#343a34] pb-2">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-[.14em] text-[#9ba399]">
-                  03 // Directory Spotlight (10,000 Active Projects)
-                </span>
+              <div className="flex items-center justify-between border-b border-[#222222] pb-2.5">
+                <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-[#9a9a9a]">
+                  Featured Repositories
+                </h3>
                 <Link
                   href="/repositories"
-                  className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#c7ff00] hover:underline"
+                  className="font-mono text-[10px] font-semibold text-[#ccf200] hover:underline"
                 >
-                  Browse all 10,000 repositories →
+                  Browse all repositories →
                 </Link>
               </div>
 
-              <div className="overflow-x-auto border border-[#343a34] bg-[#101310]">
+              <div className="overflow-x-auto rounded-lg border border-[#222222] bg-[#0c0c0c]">
                 <table className="w-full min-w-[900px]">
                   <thead>
-                    <tr className="border-b border-[#343a34] bg-[#080a08] text-left font-mono text-[9px] uppercase tracking-wider text-[#70776f]">
+                    <tr className="border-b border-[#222222] bg-[#090909] text-left font-mono text-[10px] text-[#646464]">
                       <th className="px-5 py-3">Repository</th>
                       <th className="px-4 py-3">Language</th>
                       <th className="px-4 py-3">Stars</th>
@@ -316,50 +321,57 @@ export default async function Home() {
                       <th className="px-4 py-3 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#343a34]">
+                  <tbody className="divide-y divide-[#222222]">
                     {directoryItems.map((repo) => (
-                      <tr key={repo.full_name} className="transition hover:bg-[#080a08]/60">
+                      <tr
+                        key={repo.full_name}
+                        className="transition hover:bg-[#111111]"
+                      >
                         <td className="px-5 py-3.5">
                           <Link
                             href={`/repositories/${repo.owner}/${repo.name}`}
-                            className="font-mono text-xs font-bold text-[#f1f4ec] hover:text-[#c7ff00]"
+                            className="font-mono text-xs font-bold text-[#ffffff] hover:text-[#ccf200]"
                           >
                             {repo.full_name}
                           </Link>
                           {repo.description && (
-                            <p className="mt-0.5 max-w-md truncate text-[11px] text-[#70776f]">
+                            <p className="mt-0.5 max-w-md truncate text-[11px] text-[#646464]">
                               {repo.description}
                             </p>
                           )}
                         </td>
-                        <td className="px-4 py-3.5 font-mono text-[11px] text-[#9ba399]">
+                        <td className="px-4 py-3.5 font-mono text-xs text-[#9a9a9a]">
                           {repo.primary_language || "—"}
                         </td>
-                        <td className="px-4 py-3.5 font-mono text-[11px] font-semibold text-[#f1f4ec]">
+                        <td className="px-4 py-3.5 font-mono text-xs font-semibold text-[#ffffff]">
                           {compact(repo.stars)}
                         </td>
                         <td className="px-4 py-3.5">
-                          <span className="font-mono text-xs font-bold text-[#c7ff00]">
+                          <span className="font-mono text-xs font-bold text-[#ccf200]">
                             {Math.round(repo.selection_score)}
                           </span>
-                          <span className="font-mono text-[9px] text-[#565d56]">/100</span>
+                          <span className="font-mono text-[10px] text-[#646464]">
+                            /100
+                          </span>
                         </td>
                         <td className="px-4 py-3.5">
                           {repo.promise_score ? (
-                            <span className="border border-[#c7ff00]/40 bg-[#c7ff00]/10 px-2 py-0.5 font-mono text-[10px] font-bold text-[#c7ff00]">
+                            <span className="rounded border border-[#ccf200]/40 bg-[#ccf200]/10 px-2 py-0.5 font-mono text-[10px] font-bold text-[#ccf200]">
                               {repo.promise_score}
                             </span>
                           ) : (
-                            <span className="font-mono text-[10px] text-[#565d56]">—</span>
+                            <span className="font-mono text-xs text-[#646464]">
+                              —
+                            </span>
                           )}
                         </td>
-                        <td className="px-4 py-3.5 font-mono text-[10px] text-[#70776f]">
+                        <td className="px-4 py-3.5 font-mono text-xs text-[#646464]">
                           {relativeDate(repo.pushed_at)}
                         </td>
                         <td className="px-4 py-3.5 text-right">
                           <Link
                             href={`/repositories/${repo.owner}/${repo.name}`}
-                            className="font-mono text-[10px] text-[#9ba399] hover:text-[#c7ff00]"
+                            className="font-mono text-xs text-[#9a9a9a] hover:text-[#ccf200]"
                           >
                             Inspect →
                           </Link>

@@ -52,9 +52,8 @@ export default async function ScoutPage({ searchParams }: ScoutPageProps) {
   return (
     <main>
       <PageHeader
-        eyebrow="Early Detection Engine"
-        title="AI Scout"
-        description="Autonomous discovery of high-promise, under-the-radar repositories. Evaluates velocity, commit cadence, and maintainer behavior using a composite 70% quantitative / 30% AI scoring model with strict anti-hallucination guardrails."
+        title="Scout Feed"
+        description="Identification of promising repositories based on activity velocity, commit cadence, and maintainer engagement."
       />
       <div className="mx-auto max-w-[1440px] px-5 py-6 md:px-8 xl:px-10">
         {unavailable ? (
@@ -63,7 +62,7 @@ export default async function ScoutPage({ searchParams }: ScoutPageProps) {
             description="Start FastAPI on port 8000 to stream AI Scout evaluations."
           />
         ) : (
-          <Suspense fallback={<div className="panel p-12 text-center font-mono text-xs text-[#9ba399]">Loading Scout feed...</div>}>
+          <Suspense fallback={<div className="panel p-12 text-center font-mono text-xs text-[#9a9a9a]">Loading Scout feed...</div>}>
             <ScoutFeed
               items={scoutResponse.items}
               totalCount={scoutResponse.total_count}

@@ -72,7 +72,7 @@ export function CollectorConsole() {
   }, [load]);
 
   if (!data) {
-    return <main><PageHeader eyebrow="Data operations" title="Collection control" description="Loading collector state…" /><div className="mx-auto max-w-[1440px] px-5 py-10 md:px-8 xl:px-10"><div className="panel p-10 text-sm text-[#9ba399]">{error ?? "Connecting to the collection service."}</div></div></main>;
+    return <main><PageHeader title="Collection control" description="Loading collector state…" /><div className="mx-auto max-w-[1440px] px-5 py-10 md:px-8 xl:px-10"><div className="panel p-10 text-sm text-[#9a9a9a]">{error ?? "Connecting to the collection service."}</div></div></main>;
   }
 
   const { overview, collections, trending } = data;
@@ -88,15 +88,14 @@ export function CollectorConsole() {
 
   return <main>
     <PageHeader
-      eyebrow="Data operations"
       title="Collection control"
       description="A durable intake pipeline for discovering, qualifying, and refreshing the open-source universe without storing the public event firehose."
       action={<div className="flex items-center gap-2"><button onClick={() => void load()} className="button-secondary"><ArrowPathIcon className="size-4" />Refresh</button><Link href="/admin" className="button-primary"><LockClosedIcon className="size-4" />Administration</Link></div>}
     />
     <div className="mx-auto max-w-[1440px] space-y-6 px-5 py-6 md:px-8 xl:px-10">
-      {error && <div className="flex items-center justify-between border border-[#f1f4ec] bg-[#171b17] px-4 py-3 text-sm text-[#f1f4ec]"><span>{error}</span><button onClick={() => setError(null)} className="font-mono text-[10px] font-bold uppercase">Dismiss</button></div>}
+      {error && <div className="flex items-center justify-between border border-[#ffffff] bg-[#141414] px-4 py-3 text-sm text-[#ffffff]"><span>{error}</span><button onClick={() => setError(null)} className="font-mono text-[10px] font-bold uppercase">Dismiss</button></div>}
 
-      <section className="grid gap-px overflow-hidden rounded-lg border border-[#343a34] bg-[#343a34] sm:grid-cols-2 xl:grid-cols-6">
+      <section className="grid gap-px overflow-hidden rounded-lg border border-[#222222] bg-[#222222] sm:grid-cols-2 xl:grid-cols-6">
         <Kpi label="Candidate universe" value={number.format(totalCandidates)} detail={`${number.format(overview.classifications.unclassified ?? 0)} awaiting metadata`} />
         <Kpi label="Active cohort" value={number.format(overview.tiers.active ?? 0)} detail={`Target ${collection?.active_limit ?? "—"}`} />
         <Kpi label="Fully hydrated" value={number.format(overview.hydrated_repositories)} detail="Historical entities stored" />
@@ -122,24 +121,24 @@ export function CollectorConsole() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(330px,.8fr)]">
         <section className="panel overflow-hidden">
-          <SectionHeader title="Active discovery cohort" description="Current promotion order. A provisional label means the seven-day GH Archive baseline is still accumulating." action={<div className="flex items-center gap-3"><div className="inline-flex rounded-md border border-[#343a34] bg-[#101310] p-0.5">{([['all','All software'],['libraries','Libraries'],['tools','Dev tools']] as [CohortView,string][]).map(([value,title]) => <button key={value} onClick={() => setCohortView(value)} className={`rounded px-2.5 py-1 text-[11px] font-semibold ${cohortView === value ? "bg-[#080a08] text-[#f1f4ec]" : "text-[#9ba399]"}`}>{title}</button>)}</div><Link href="/repositories" className="text-xs font-semibold text-[#c7ff00]">Hydrated →</Link></div>} />
+          <SectionHeader title="Active discovery cohort" description="Current promotion order. A provisional label means the seven-day GH Archive baseline is still accumulating." action={<div className="flex items-center gap-3"><div className="inline-flex rounded-md border border-[#222222] bg-[#0c0c0c] p-0.5">{([['all','All software'],['libraries','Libraries'],['tools','Dev tools']] as [CohortView,string][]).map(([value,title]) => <button key={value} onClick={() => setCohortView(value)} className={`rounded px-2.5 py-1 text-[11px] font-semibold ${cohortView === value ? "bg-[#ccf200] text-[#050505]" : "text-[#9a9a9a]"}`}>{title}</button>)}</div><Link href="/repositories" className="text-xs font-semibold text-[#ccf200]">Hydrated →</Link></div>} />
           <div className="overflow-x-auto">
             <table className="w-full min-w-[780px]">
-              <thead><tr className="border-b border-[#343a34] bg-[#101310]"><th className="table-head px-5 py-3">Repository</th><th className="table-head px-4 py-3">Class</th><th className="table-head px-4 py-3">7d signals</th><th className="table-head px-4 py-3">Discovery score</th><th className="table-head px-4 py-3">State</th></tr></thead>
+              <thead><tr className="border-b border-[#222222] bg-[#0c0c0c]"><th className="table-head px-5 py-3">Repository</th><th className="table-head px-4 py-3">Class</th><th className="table-head px-4 py-3">7d signals</th><th className="table-head px-4 py-3">Discovery score</th><th className="table-head px-4 py-3">State</th></tr></thead>
               <tbody>{visibleTrending.slice(0, 15).map((candidate) => {
                 const signals = candidate.trend_components;
                 const signalCount = (signals.star_events ?? 0) + (signals.fork_events ?? 0) + (signals.pull_request_events ?? 0) + (signals.release_events ?? 0);
-                return <tr key={candidate.id} className="border-b border-[#343a34] last:border-0 hover:bg-[#101310]"><td className="max-w-[330px] px-5 py-3.5"><p className="font-mono text-[13px] font-semibold">{candidate.full_name}</p><p className="mt-1 truncate text-xs text-[#9ba399]">{candidate.description ?? "Metadata pending"}</p></td><td className="px-4"><span className="rounded bg-[#171b17] px-2 py-1 text-[11px] font-semibold text-[#9ba399]">{label(candidate.classification)}</span></td><td className="px-4"><b className="font-mono text-xs">{number.format(signalCount)}</b><span className="block text-[10px] text-[#70776f]">adoption + collaboration</span></td><td className="px-4"><ScoreBar value={candidate.trend_score} compact /></td><td className="px-4"><StatusBadge status={signals.provisional ? "Baseline pending" : candidate.repository_id ? "Hydrated" : "Queued"} tone={signals.provisional ? "neutral" : candidate.repository_id ? "positive" : "warning"} /></td></tr>;
+                return <tr key={candidate.id} className="border-b border-[#222222] last:border-0 hover:bg-[#0c0c0c]"><td className="max-w-[330px] px-5 py-3.5"><p className="font-mono text-[13px] font-semibold">{candidate.full_name}</p><p className="mt-1 truncate text-xs text-[#9a9a9a]">{candidate.description ?? "Metadata pending"}</p></td><td className="px-4"><span className="rounded bg-[#161616] px-2 py-1 text-[11px] font-semibold text-[#9a9a9a]">{label(candidate.classification)}</span></td><td className="px-4"><b className="font-mono text-xs">{number.format(signalCount)}</b><span className="block text-[10px] text-[#646464]">adoption + collaboration</span></td><td className="px-4"><ScoreBar value={candidate.trend_score} compact /></td><td className="px-4"><StatusBadge status={signals.provisional ? "Baseline pending" : candidate.repository_id ? "Hydrated" : "Queued"} tone={signals.provisional ? "neutral" : candidate.repository_id ? "positive" : "warning"} /></td></tr>;
               })}</tbody>
             </table>
-            {visibleTrending.length === 0 && <div className="p-10 text-center text-sm text-[#9ba399]">No active repositories match this cohort view yet.</div>}
+            {visibleTrending.length === 0 && <div className="p-10 text-center text-sm text-[#9a9a9a]">No active repositories match this cohort view yet.</div>}
           </div>
         </section>
 
         <div className="space-y-6">
           <section className="panel overflow-hidden">
             <SectionHeader title="Policy envelope" description="Configured limits make collection cost predictable." />
-            <dl className="divide-y divide-[#343a34] px-5">
+            <dl className="divide-y divide-[#222222] px-5">
               <Policy label="Active set" value={number.format(collection?.active_limit ?? 0)} />
               <Policy label="Candidate ceiling" value={number.format(collection?.candidate_limit ?? 0)} />
               <Policy label="Refresh cadence" value={`${collection?.refresh_hours ?? 0} hours`} />
@@ -149,8 +148,8 @@ export function CollectorConsole() {
             </dl>
           </section>
 
-          <section className="overflow-hidden rounded-lg border border-[#343a34] bg-[#101310]">
-            <div className="p-5"><div className="grid size-9 place-items-center rounded-md bg-[#101310] text-[#c7ff00] shadow-sm"><LockClosedIcon className="size-4" /></div><h3 className="mt-4 text-sm font-semibold">Controls are access-restricted</h3><p className="mt-2 text-xs leading-5 text-[#9ba399]">Queue management, manual ingestion, retries, maintenance, and policy commands have moved behind the authenticated administration boundary.</p><Link href="/admin" className="mt-4 inline-flex text-xs font-semibold text-[#c7ff00]">Open administration →</Link></div>
+          <section className="overflow-hidden rounded-lg border border-[#222222] bg-[#0c0c0c]">
+            <div className="p-5"><div className="grid size-9 place-items-center rounded-md bg-[#161616] text-[#ccf200] border border-[#222222] shadow-sm"><LockClosedIcon className="size-4" /></div><h3 className="mt-4 text-sm font-semibold text-[#ffffff]">Controls are access-restricted</h3><p className="mt-2 text-xs leading-5 text-[#9a9a9a]">Queue management, manual ingestion, retries, maintenance, and policy commands have moved behind the authenticated administration boundary.</p><Link href="/admin" className="mt-4 inline-flex text-xs font-semibold text-[#ccf200]">Open administration →</Link></div>
           </section>
         </div>
       </div>
@@ -170,21 +169,21 @@ async function assertJson(response: Response) {
 }
 
 function Kpi({ label: title, value, detail }: { label: string; value: string; detail: string }) {
-  return <div className="bg-[#101310] px-5 py-4"><p className="data-label">{title}</p><p className="mt-2 font-mono text-2xl font-semibold tracking-[-0.04em]">{value}</p><p className="mt-1 text-[11px] text-[#70776f]">{detail}</p></div>;
+  return <div className="bg-[#0c0c0c] px-5 py-4"><p className="data-label">{title}</p><p className="mt-2 font-mono text-2xl font-semibold tracking-[-0.04em]">{value}</p><p className="mt-1 text-[11px] text-[#9a9a9a]">{detail}</p></div>;
 }
 
 function Stage({ index, icon, title, value, detail }: { index: string; icon: React.ReactNode; title: string; value: string; detail: string }) {
-  return <motion.article whileHover={{ y: -5, borderColor: "#c7ff00" }} className="data-scan relative min-h-[178px] border border-[#697168] bg-[#101310] p-5"><span className="absolute right-4 top-4 font-mono text-[10px] font-bold tracking-[.15em] text-[#9ba399]">{index}</span><div className="grid size-9 place-items-center border border-[#343a34] bg-[#171b17] text-[#c7ff00]">{icon}</div><div className="mt-5 flex items-end justify-between gap-3"><h3 className="text-sm font-black uppercase">{title}</h3><strong className="font-mono text-xl tracking-[-0.04em]">{value}</strong></div><p className="mt-3 text-xs leading-5 text-[#9ba399]">{detail}</p></motion.article>;
+  return <motion.article whileHover={{ y: -2, borderColor: "#ccf200" }} className="relative min-h-[178px] rounded-lg border border-[#222222] bg-[#0c0c0c] p-5 transition-colors"><span className="absolute right-4 top-4 font-mono text-[10px] font-bold tracking-[.15em] text-[#646464]">{index}</span><div className="grid size-9 place-items-center rounded border border-[#222222] bg-[#161616] text-[#ccf200]">{icon}</div><div className="mt-5 flex items-end justify-between gap-3"><h3 className="text-sm font-semibold tracking-tight">{title}</h3><strong className="font-mono text-xl tracking-[-0.04em]">{value}</strong></div><p className="mt-3 text-xs leading-5 text-[#9a9a9a]">{detail}</p></motion.article>;
 }
 
 function PipelineArrow() {
-  return <div className="hidden items-center justify-center text-[#70776f] lg:flex"><ArrowRightIcon className="size-4" /></div>;
+  return <div className="hidden items-center justify-center text-[#646464] lg:flex"><ArrowRightIcon className="size-4" /></div>;
 }
 
 function Policy({ label: title, value }: { label: string; value: string }) {
-  return <div className="flex items-center justify-between gap-4 py-3.5"><dt className="text-xs text-[#9ba399]">{title}</dt><dd className="text-right font-mono text-xs font-semibold">{value}</dd></div>;
+  return <div className="flex items-center justify-between gap-4 py-3.5"><dt className="text-xs text-[#9a9a9a]">{title}</dt><dd className="text-right font-mono text-xs font-semibold">{value}</dd></div>;
 }
 
 function TrustNote({ icon, title, detail }: { icon: React.ReactNode; title: string; detail: string }) {
-  return <motion.article whileHover={{ x: 4 }} className="panel flex gap-4 p-5"><div className="grid size-9 shrink-0 place-items-center border border-[#343a34] bg-[#171b17] text-[#c7ff00]">{icon}</div><div><h3 className="text-sm font-black uppercase">{title}</h3><p className="mt-1.5 text-xs leading-5 text-[#9ba399]">{detail}</p></div></motion.article>;
+  return <motion.article whileHover={{ x: 2 }} className="panel flex gap-4 p-5"><div className="grid size-9 shrink-0 place-items-center rounded border border-[#222222] bg-[#161616] text-[#ccf200]">{icon}</div><div><h3 className="text-sm font-semibold tracking-tight text-[#ffffff]">{title}</h3><p className="mt-1.5 text-xs leading-5 text-[#9a9a9a]">{detail}</p></div></motion.article>;
 }

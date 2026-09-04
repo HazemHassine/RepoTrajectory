@@ -98,9 +98,8 @@ export default async function Repositories({
   return (
     <main>
       <PageHeader
-        eyebrow="Canonical Universe"
-        title="10,000 Directory"
-        description="The canonical index of 10,000 active, diverse software repositories. Enforced 25% max language diversity cap, backed by a 50,000 rolling candidate pool and 500-repo deep analysis cohort."
+        title="Repositories"
+        description="Directory of active open-source software repositories across ecosystems, indexed by technology, activity, and health."
         action={
           <div className="flex items-center gap-2">
             <IngestionCommand />
@@ -111,10 +110,10 @@ export default async function Repositories({
         {unavailable ? (
           <EmptyState
             title="Directory API unavailable"
-            description="Start FastAPI on port 8000 to query the canonical 10,000 repository directory."
+            description="Start FastAPI on port 8000 to query the repository directory."
           />
         ) : (
-          <Suspense fallback={<div className="panel p-12 text-center font-mono text-xs text-[#9ba399]">Loading directory...</div>}>
+          <Suspense fallback={<div className="panel p-12 text-center font-mono text-xs text-[#9a9a9a]">Loading directory...</div>}>
             <RepositoryDirectory
               records={catalogResponse.items}
               totalCount={catalogResponse.total_count}

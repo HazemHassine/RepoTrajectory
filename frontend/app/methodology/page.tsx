@@ -88,48 +88,47 @@ export default function Methodology() {
   return (
     <main>
       <PageHeader
-        eyebrow="Methodology & Governance"
-        title="Analytical Framework"
-        description="RepoTrajectory makes all algorithmic decisions, formulas, and data boundaries explicit. Scores are deterministic heuristics, AI evaluations run under strict factual guardrails, and missing evidence is transparently reported."
+        title="Methodology & Governance"
+        description="RepoTrajectory makes all metric definitions, formulas, and data boundaries explicit. Scores are deterministic heuristics, AI evaluations run under factual guardrails, and missing evidence is transparently reported."
       />
 
       <div className="mx-auto max-w-[1200px] space-y-8 px-5 py-8 md:px-8 xl:px-10">
         {/* Core Architecture Highlights */}
         <section className="grid gap-4 md:grid-cols-3">
-          <div className="panel p-5 border border-[#343a34] bg-[#0c0f0c]">
-            <div className="flex items-center gap-2 text-[#c7ff00]">
+          <div className="panel border border-[#222222] bg-[#0c0c0c] p-5">
+            <div className="flex items-center gap-2 text-[#ccf200]">
               <CircleStackIcon className="size-5" />
               <h3 className="font-mono text-xs font-bold uppercase tracking-wider">
-                10,000 Canonical Directory
+                Repository Directory
               </h3>
             </div>
-            <p className="mt-3 text-xs leading-5 text-[#9ba399]">
+            <p className="mt-3 text-xs leading-5 text-[#9a9a9a]">
               Curated from a 50,000 rolling candidate pool. Max 25% language diversity cap prevents
               any single ecosystem from dominating the catalog. 500 repos receive deep weekly telemetry.
             </p>
           </div>
 
-          <div className="panel p-5 border border-[#343a34] bg-[#0c0f0c]">
-            <div className="flex items-center gap-2 text-[#c7ff00]">
+          <div className="panel p-5 border border-[#222222] bg-[#0c0c0c]">
+            <div className="flex items-center gap-2 text-[#ccf200]">
               <SparklesIcon className="size-5" />
               <h3 className="font-mono text-xs font-bold uppercase tracking-wider">
                 AI Scout Engine
               </h3>
             </div>
-            <p className="mt-3 text-xs leading-5 text-[#9ba399]">
+            <p className="mt-3 text-xs leading-5 text-[#9a9a9a]">
               70% quantitative pre-ranking + 30% structured AI evaluation. Discovers high-promise projects
               regardless of star scale (low-star repos like 6-star projects supported).
             </p>
           </div>
 
-          <div className="panel p-5 border border-[#343a34] bg-[#0c0f0c]">
-            <div className="flex items-center gap-2 text-[#c7ff00]">
+          <div className="panel p-5 border border-[#222222] bg-[#0c0c0c]">
+            <div className="flex items-center gap-2 text-[#ccf200]">
               <BoltIcon className="size-5" />
               <h3 className="font-mono text-xs font-bold uppercase tracking-wider">
                 Hybrid Search (RRF k=60)
               </h3>
             </div>
-            <p className="mt-3 text-xs leading-5 text-[#9ba399]">
+            <p className="mt-3 text-xs leading-5 text-[#9a9a9a]">
               PostgreSQL trigram &amp; fulltext lexical search fused with 1536-dimensional pgvector cosine
               similarity via Reciprocal-Rank Fusion.
             </p>
@@ -142,18 +141,18 @@ export default function Methodology() {
             title="Core Questions & Capabilities"
             description="Operational coverage across repository intelligence, search, and early detection."
           />
-          <div className="divide-y divide-[#343a34]">
+          <div className="divide-y divide-[#222222]">
             {coreQuestions.map(([question, status, detail], index) => (
               <div
                 key={question}
                 className="grid gap-3 px-5 py-4 md:grid-cols-[36px_1fr_180px_1.4fr] md:items-start"
               >
-                <span className="font-mono text-xs text-[#70776f]">
+                <span className="font-mono text-xs text-[#646464]">
                   {String(index + 1).padStart(2, "0")}
                 </span>
-                <h3 className="text-sm font-semibold text-[#f1f4ec]">{question}</h3>
+                <h3 className="text-sm font-semibold text-[#ffffff]">{question}</h3>
                 <Coverage status={status} />
-                <p className="text-xs leading-5 text-[#9ba399]">{detail}</p>
+                <p className="text-xs leading-5 text-[#9a9a9a]">{detail}</p>
               </div>
             ))}
           </div>
@@ -169,20 +168,20 @@ export default function Methodology() {
             {scoringWeights.map((item) => (
               <article key={item.name} className="panel flex flex-col justify-between p-6">
                 <div>
-                  <p className="eyebrow">[ Algorithmic Model ]</p>
-                  <h3 className="mt-2 text-base font-bold text-[#f1f4ec]">{item.name}</h3>
-                  <p className="mt-1 text-xs text-[#b9c0b7]">{item.target}</p>
+                  <p className="eyebrow">Scoring Model</p>
+                  <h3 className="mt-2 text-base font-bold text-[#ffffff]">{item.name}</h3>
+                  <p className="mt-1 text-xs text-[#9a9a9a]">{item.target}</p>
 
-                  <div className="my-4 h-px bg-[#343a34]" />
+                  <div className="my-4 h-px bg-[#222222]" />
 
-                  <p className="font-mono text-[10px] font-black uppercase text-[#c7ff00]">
+                  <p className="font-mono text-[10px] font-black uppercase text-[#ccf200]">
                     {item.formula}
                   </p>
-                  <p className="mt-2 text-xs leading-5 text-[#9ba399]">{item.breakdown}</p>
+                  <p className="mt-2 text-xs leading-5 text-[#9a9a9a]">{item.breakdown}</p>
                 </div>
 
-                <div className="mt-6 rounded border border-[#343a34] bg-[#101310] p-3 text-[11px] leading-4 text-[#c7ff00]">
-                  <p className="font-mono font-bold uppercase text-[9px] text-[#70776f] mb-1">
+                <div className="mt-6 rounded border border-[#222222] bg-[#090909] p-3 text-[11px] leading-4 text-[#ccf200]">
+                  <p className="font-mono font-bold uppercase text-[9px] text-[#646464] mb-1">
                     Guardrails &amp; Constraints:
                   </p>
                   {item.guardrails}
@@ -195,23 +194,23 @@ export default function Methodology() {
         {/* Data Integrity Principles */}
         <section className="panel p-6">
           <h2 className="section-title">Data Integrity Contract</h2>
-          <div className="mt-4 grid gap-6 text-xs leading-5 text-[#9ba399] md:grid-cols-3">
+          <div className="mt-4 grid gap-6 text-xs leading-5 text-[#9a9a9a] md:grid-cols-3">
             <div>
-              <b className="block font-mono text-sm text-[#f1f4ec] mb-1">Raw Is Sacred</b>
+              <b className="block font-mono text-sm text-[#ffffff] mb-1">Raw Is Sacred</b>
               <p>
                 GitHub REST and GraphQL entity payloads are recorded immutably. Derived scores and AI
                 assessments reference stored provenance snapshots with SHA-256 verification hashes.
               </p>
             </div>
             <div>
-              <b className="block font-mono text-sm text-[#f1f4ec] mb-1">Human vs Bot Isolation</b>
+              <b className="block font-mono text-sm text-[#ffffff] mb-1">Human vs Bot Isolation</b>
               <p>
                 Automated release bots, synchronizers, and GitHub Actions identities are isolated from human
                 commit velocity and author concentration metrics.
               </p>
             </div>
             <div>
-              <b className="block font-mono text-sm text-[#f1f4ec] mb-1">No Hallucinated History</b>
+              <b className="block font-mono text-sm text-[#ffffff] mb-1">No Hallucinated History</b>
               <p>
                 Observed star curves require distinct chronological snapshots. RepoTrajectory never fabricates
                 historical trends or interpolates missing data without explicit disclosure.
@@ -231,7 +230,7 @@ function Coverage({ status }: { status: string }) {
   return (
     <span
       className={`inline-flex w-fit items-center gap-1.5 font-mono text-[11px] font-semibold ${
-        pending ? "text-[#9ba399]" : partial ? "text-[#c7ff00]" : "text-[#c7ff00]"
+        pending ? "text-[#9a9a9a]" : partial ? "text-[#ccf200]" : "text-[#ccf200]"
       }`}
     >
       <Icon className="size-3.5" />

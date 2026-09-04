@@ -116,25 +116,16 @@ export function FirstRunTutorial() {
 
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get("tour") === "1";
-    let complete = false;
-    try {
-      complete = window.localStorage.getItem(STORAGE_KEY) === "complete";
-    } catch {
-      // Treat unavailable storage as a first visit.
-    }
 
     if (requested) {
       const url = new URL(window.location.href);
       url.searchParams.delete("tour");
       window.history.replaceState({}, "", url);
+      openTour();
     }
 
-    const timer = window.setTimeout(() => {
-      if (requested || !complete) openTour();
-    }, 450);
     window.addEventListener(START_EVENT, openTour);
     return () => {
-      window.clearTimeout(timer);
       window.removeEventListener(START_EVENT, openTour);
     };
   }, [openTour]);
@@ -187,7 +178,7 @@ export function FirstRunTutorial() {
   return <div className="fixed inset-0 z-[100]" aria-live="polite">
     <div className="absolute inset-0" aria-hidden="true" />
     {targetRect ? <div
-      className="pointer-events-none fixed z-[101] rounded-lg ring-2 ring-white/90 shadow-[0_0_0_9999px_rgba(5,12,24,0.72)] transition-all duration-200"
+      className="pointer-events-none fixed z-[101] rounded-lg ring-2 ring-[#ccf200]/90 shadow-[0_0_0_9999px_rgba(5,5,5,0.85)] transition-all duration-200"
       style={{
         left: targetRect.left - 6,
         top: targetRect.top - 6,
@@ -195,7 +186,7 @@ export function FirstRunTutorial() {
         height: targetRect.height + 12,
       }}
       aria-hidden="true"
-    /> : <div className="fixed inset-0 z-[101] bg-[#080a08]/75 backdrop-blur-[2px]" aria-hidden="true" />}
+    /> : <div className="fixed inset-0 z-[101] bg-[#050505]/85 backdrop-blur-[2px]" aria-hidden="true" />}
 
     <section
       key={step.id}
@@ -205,38 +196,38 @@ export function FirstRunTutorial() {
       aria-labelledby="tour-title"
       tabIndex={-1}
       style={cardStyle}
-      className="tour-card fixed z-[102] max-h-[calc(100vh-40px)] w-[min(420px,calc(100vw-32px))] overflow-y-auto rounded-lg border border-[#343a34] bg-[#101310] shadow-[0_24px_70px_rgba(0,0,0,.3)] focus:outline-none"
+      className="tour-card fixed z-[102] max-h-[calc(100vh-40px)] w-[min(420px,calc(100vw-32px))] overflow-y-auto rounded-lg border border-[#222222] bg-[#0c0c0c] shadow-[0_24px_70px_rgba(0,0,0,.7)] focus:outline-none"
     >
-      <div className="flex items-center justify-between border-b border-[#343a34] px-5 py-3.5">
-        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#9ba399]">
-          <span className="font-mono text-[#c7ff00]">{String(stepIndex + 1).padStart(2, "0")}</span>
+      <div className="flex items-center justify-between border-b border-[#222222] px-5 py-3.5">
+        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.1em] text-[#9a9a9a]">
+          <span className="font-mono text-[#ccf200]">{String(stepIndex + 1).padStart(2, "0")}</span>
           <span>/</span>
           <span className="font-mono">{String(steps.length).padStart(2, "0")}</span>
         </div>
-        <button onClick={closeTour} className="rounded p-1 text-[#9ba399] hover:bg-[#171b17] hover:text-[#f1f4ec]" aria-label="Close tutorial">
+        <button onClick={closeTour} className="rounded p-1 text-[#9a9a9a] hover:bg-[#161616] hover:text-[#ffffff]" aria-label="Close tutorial">
           <XMarkIcon className="size-5" />
         </button>
       </div>
 
       <div className="p-6">
-        <div className="grid size-11 place-items-center rounded-md bg-[#171b17] text-[#c7ff00]"><Icon className="size-5" /></div>
-        <p className="eyebrow mt-5 text-[#c7ff00]">{step.eyebrow}</p>
-        <h2 id="tour-title" className="mt-2 text-[23px] font-semibold leading-7 tracking-[-0.035em] text-[#f1f4ec]">{step.title}</h2>
-        <p className="mt-3 text-sm font-medium leading-6 text-[#9ba399]">{step.description}</p>
-        <p className="mt-3 text-xs leading-5 text-[#9ba399]">{step.detail}</p>
+        <div className="grid size-11 place-items-center rounded-md border border-[#222222] bg-[#161616] text-[#ccf200]"><Icon className="size-5" /></div>
+        <p className="eyebrow mt-5 text-[#ccf200]">{step.eyebrow}</p>
+        <h2 id="tour-title" className="mt-2 text-[23px] font-semibold leading-7 tracking-[-0.035em] text-[#ffffff]">{step.title}</h2>
+        <p className="mt-3 text-sm font-medium leading-6 text-[#9a9a9a]">{step.description}</p>
+        <p className="mt-3 text-xs leading-5 text-[#9a9a9a]">{step.detail}</p>
 
         {isLast && <div className="mt-5 grid grid-cols-2 gap-2">
-          <Link href="/collection" onClick={closeTour} className="rounded-md border border-[#343a34] px-3 py-2.5 text-center text-xs font-semibold text-[#f1f4ec] hover:bg-[#101310]">Open collection</Link>
-          <Link href="/repositories" onClick={closeTour} className="rounded-md border border-[#343a34] px-3 py-2.5 text-center text-xs font-semibold text-[#f1f4ec] hover:bg-[#101310]">Browse repositories</Link>
+          <Link href="/collection" onClick={closeTour} className="rounded-md border border-[#222222] px-3 py-2.5 text-center text-xs font-semibold text-[#ffffff] hover:bg-[#161616]">Open collection</Link>
+          <Link href="/repositories" onClick={closeTour} className="rounded-md border border-[#222222] px-3 py-2.5 text-center text-xs font-semibold text-[#ffffff] hover:bg-[#161616]">Browse repositories</Link>
         </div>}
       </div>
 
-      <div className="flex items-center justify-between border-t border-[#343a34] bg-[#101310] px-5 py-4">
+      <div className="flex items-center justify-between border-t border-[#222222] bg-[#0c0c0c] px-5 py-4">
         {stepIndex === 0
-          ? <button onClick={closeTour} className="text-xs font-semibold text-[#9ba399] hover:text-[#f1f4ec]">Skip tour</button>
-          : <button onClick={() => setStepIndex((current) => current - 1)} className="inline-flex items-center gap-1 text-xs font-semibold text-[#9ba399] hover:text-[#f1f4ec]"><ChevronLeftIcon className="size-4" />Back</button>}
+          ? <button onClick={closeTour} className="text-xs font-semibold text-[#9a9a9a] hover:text-[#ffffff]">Skip tour</button>
+          : <button onClick={() => setStepIndex((current) => current - 1)} className="inline-flex items-center gap-1 text-xs font-semibold text-[#9a9a9a] hover:text-[#ffffff]"><ChevronLeftIcon className="size-4" />Back</button>}
         <div className="flex items-center gap-3">
-          <div className="hidden gap-1 sm:flex" aria-hidden="true">{steps.map((item, index) => <span key={item.id} className={`h-1 rounded-full transition-all ${index === stepIndex ? "w-5 bg-[#c7ff00]" : index < stepIndex ? "w-2 bg-[#c7ff00]" : "w-2 bg-[#343a34]"}`} />)}</div>
+          <div className="hidden gap-1 sm:flex" aria-hidden="true">{steps.map((item, index) => <span key={item.id} className={`h-1 rounded-full transition-all ${index === stepIndex ? "w-5 bg-[#ccf200]" : index < stepIndex ? "w-2 bg-[#ccf200]" : "w-2 bg-[#222222]"}`} />)}</div>
           <button onClick={() => isLast ? closeTour() : setStepIndex((current) => current + 1)} className="button-primary min-w-[94px] px-3">
             {isLast ? <><CheckIcon className="size-4" />Finish</> : <>Next<ChevronRightIcon className="size-4" /></>}
           </button>

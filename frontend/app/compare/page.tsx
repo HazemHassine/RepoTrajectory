@@ -25,9 +25,8 @@ export default async function Compare({
   return (
     <main>
       <PageHeader
-        eyebrow="Decision Workspace"
         title="Repository Comparison"
-        description="Side-by-side comparative analysis of normalized strategic signals, operating velocity, commit resilience, and community health."
+        description="Side-by-side comparative analysis of activity velocity, commit resilience, and community health."
       />
       <div className="mx-auto max-w-[1440px] px-5 py-6 md:px-8 xl:px-10">
         <CompareExplorer
