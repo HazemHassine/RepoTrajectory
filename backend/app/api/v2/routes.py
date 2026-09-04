@@ -84,7 +84,8 @@ async def list_repositories(
     min_stars: int | None = None,
     max_stars: int | None = None,
     lens: str = Query("developer", pattern="^(developer|maintainer|investor)$"),
-    sort: str = Query("selection", pattern="^(selection|stars|pushed|promise|activity)$"),
+    sort: str = Query("selection", pattern="^(selection|stars|pushed|promise|activity|growth|health|name)$"),
+    order: str = Query("desc", pattern="^(asc|desc)$"),
     cursor: str | None = None,
     limit: int = Query(50, ge=1, le=100),
 ) -> CursorPaginationEnvelope:
@@ -114,13 +115,35 @@ async def list_repositories(
 
     # Sorting options
     if sort == "stars":
-        stmt = stmt.order_by(CatalogRepository.stars.desc(), CatalogRepository.github_id)
+        stmt = stmt.order_by(
+            CatalogRepository.stars.asc() if order == "asc" else CatalogRepository.stars.desc(),
+            CatalogRepository.github_id,
+        )
     elif sort == "pushed":
-        stmt = stmt.order_by(CatalogRepository.pushed_at.desc().nullslast(), CatalogRepository.github_id)
+        stmt = stmt.order_by(
+            CatalogRepository.pushed_at.asc().nullslast() if order == "asc" else CatalogRepository.pushed_at.desc().nullslast(),
+            CatalogRepository.github_id,
+        )
     elif sort == "promise":
-        stmt = stmt.order_by(CatalogRepository.promise_score.desc().nullslast(), CatalogRepository.github_id)
-    elif sort == "activity":
-        stmt = stmt.order_by(CatalogRepository.activity_score.desc(), CatalogRepository.github_id)
+        stmt = stmt.order_by(
+            CatalogRepository.promise_score.asc().nullslast() if order == "asc" else CatalogRepository.promise_score.desc().nullslast(),
+            CatalogRepository.github_id,
+        )
+    elif sort in {"activity", "growth"}:
+        stmt = stmt.order_by(
+            CatalogRepository.activity_score.asc() if order == "asc" else CatalogRepository.activity_score.desc(),
+            CatalogRepository.github_id,
+        )
+    elif sort == "health":
+        stmt = stmt.order_by(
+            CatalogRepository.maintenance_score.asc() if order == "asc" else CatalogRepository.maintenance_score.desc(),
+            CatalogRepository.github_id,
+        )
+    elif sort == "name":
+        stmt = stmt.order_by(
+            CatalogRepository.name.desc() if order == "desc" else CatalogRepository.name.asc(),
+            CatalogRepository.github_id,
+        )
     else:  # selection
         stmt = stmt.order_by(CatalogRepository.selection_score.desc(), CatalogRepository.stars.desc())
 
