@@ -21,7 +21,7 @@ from app.db.models import (
     ScoutAssessment,
 )
 from app.db.session import SessionLocal
-from app.github.client import GitHubClient, GitHubRateLimitError
+from app.github.client import GitHubAPIError, GitHubClient, GitHubRateLimitError
 from app.services.analytics import calculate_metrics
 from app.services.catalog import generate_catalog_embeddings, sync_catalog_from_repository
 from app.services.directory import discover_github_sharded, reconcile_directory_and_cohort
@@ -397,11 +397,17 @@ class CollectorWorker:
                 await self._hydrate_candidate(session, job)
             elif job.job_type == "ingest_repository":
                 full_name = str(job.payload["full_name"])
-                repo = await RepositoryIngester(session, self.github, self.settings).ingest(
-                    full_name
-                )
-                await calculate_metrics(session, repo, 30)
-                await sync_catalog_from_repository(session, repo)
+                try:
+                    repo = await RepositoryIngester(session, self.github, self.settings).ingest(
+                        full_name
+                    )
+                    await calculate_metrics(session, repo, 30)
+                    await sync_catalog_from_repository(session, repo)
+                except GitHubAPIError as err:
+                    if err.status_code == 404:
+                        log.warning("ingest_repository_not_found", repository=full_name)
+                        return
+                    raise
             elif job.job_type == "reconcile_directory":
                 await reconcile_directory_and_cohort(session, self.settings)
             elif job.job_type == "scout_eval_batch":
@@ -440,9 +446,24 @@ class CollectorWorker:
                 eligible=candidate.eligible,
             )
             return
-        repo = await RepositoryIngester(session, self.github, self.settings).ingest(
-            candidate.full_name, mode="refresh" if candidate.repository_id else "full"
-        )
+        try:
+            repo = await RepositoryIngester(session, self.github, self.settings).ingest(
+                candidate.full_name, mode="refresh" if candidate.repository_id else "full"
+            )
+        except GitHubAPIError as err:
+            if err.status_code == 404:
+                candidate.eligible = False
+                if candidate.tier != "pinned":
+                    candidate.tier = "candidate"
+                candidate.rejection_reason = "repository removed or private on github (404)"
+                await session.commit()
+                log.info(
+                    "repository_hydration_not_found",
+                    repository=candidate.full_name,
+                    error=str(err),
+                )
+                return
+            raise
         await calculate_metrics(session, repo, 30)
         await sync_catalog_from_repository(session, repo)
         candidate = await session.get(RepositoryCandidate, job.candidate_id)
@@ -546,8 +567,9 @@ class CollectorWorker:
             job = await session.get(IngestionJob, job_id)
             if job is None:
                 return
-            retry = job.attempts < job.max_attempts
-            job.status = "queued" if retry else "failed"
+            is_404 = "404" in str(error)
+            retry = (job.attempts < job.max_attempts) and not is_404
+            job.status = "queued" if retry else ("cancelled" if is_404 else "failed")
             job.scheduled_for = now + timedelta(minutes=min(2**job.attempts, 360))
             job.locked_at = None
             job.locked_by = None

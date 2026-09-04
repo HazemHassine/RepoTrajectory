@@ -23,7 +23,7 @@ from app.db.models import (
     Repository,
     RepositoryCandidate,
 )
-from app.github.client import GitHubClient
+from app.github.client import GitHubAPIError, GitHubClient
 
 log = structlog.get_logger()
 
@@ -558,7 +558,17 @@ async def probe_repository_candidate(
     candidate = await session.get(RepositoryCandidate, candidate_id)
     if candidate is None:
         raise ValueError("candidate no longer exists")
-    payload = await github.get_json(f"/repos/{candidate.full_name}")
+    try:
+        payload = await github.get_json(f"/repos/{candidate.full_name}")
+    except GitHubAPIError as exc:
+        if "404" in str(exc):
+            candidate.eligible = False
+            candidate.rejection_reason = "repository not found on github (404)"
+            candidate.last_seen_at = datetime.now(UTC)
+            await session.commit()
+            log.info("candidate_probe_not_found", repository=candidate.full_name)
+            return candidate
+        raise
     values = github_candidate_values(payload, datetime.now(UTC))
     if values is None:
         raise ValueError(f"GitHub returned incomplete metadata for {candidate.full_name}")
@@ -713,67 +723,100 @@ async def persist_gh_archive_hour(
         await _record_archive_file(session, settings, hour, result, "completed", now)
         await session.commit()
         return 0
-    candidate_values = []
+    deduped_candidates = {}
     for activity in result.repositories:
+        if activity.full_name in deduped_candidates:
+            existing_val = deduped_candidates[activity.full_name]
+            existing_val["source_score"] = max(existing_val["source_score"], activity.weighted_events)
+            continue
         owner, name = activity.full_name.split("/", 1)
-        candidate_values.append(
-            {
-                "github_id": activity.github_id,
-                "owner": owner,
-                "name": name,
-                "full_name": activity.full_name,
-                "description": None,
-                "primary_language": None,
-                "topics": [],
-                "classification": "unclassified",
-                "classification_confidence": 0,
-                "rejection_reason": "metadata probe required",
-                "stars": 0,
-                "forks": 0,
-                "pushed_at": None,
-                "archived": False,
-                "is_fork": False,
-                "source": "gh_archive",
-                "source_score": activity.weighted_events,
-                "trend_score": 0.0,
-                "trend_components": {},
-                "tier": "candidate",
-                "eligible": True,
-                "discovered_at": now,
-                "last_seen_at": now,
-                "next_refresh_at": now,
-            }
-        )
-    candidates = insert(RepositoryCandidate).values(candidate_values)
-    await session.execute(
-        candidates.on_conflict_do_update(
-            index_elements=[RepositoryCandidate.github_id],
-            set_={
-                "owner": candidates.excluded.owner,
-                "name": candidates.excluded.name,
-                "full_name": candidates.excluded.full_name,
-                "last_seen_at": candidates.excluded.last_seen_at,
-                "source_score": func.greatest(
-                    RepositoryCandidate.source_score, candidates.excluded.source_score
-                ),
-            },
-        )
-    )
-    await session.flush()
-    id_rows = (
-        await session.execute(
-            select(RepositoryCandidate.github_id, RepositoryCandidate.id).where(
-                RepositoryCandidate.github_id.in_(
-                    [activity.github_id for activity in result.repositories]
+        deduped_candidates[activity.full_name] = {
+            "github_id": activity.github_id,
+            "owner": owner,
+            "name": name,
+            "full_name": activity.full_name,
+            "description": None,
+            "primary_language": None,
+            "topics": [],
+            "classification": "unclassified",
+            "classification_confidence": 0,
+            "rejection_reason": "metadata probe required",
+            "stars": 0,
+            "forks": 0,
+            "pushed_at": None,
+            "archived": False,
+            "is_fork": False,
+            "source": "gh_archive",
+            "source_score": activity.weighted_events,
+            "trend_score": 0.0,
+            "trend_components": {},
+            "tier": "candidate",
+            "eligible": True,
+            "discovered_at": now,
+            "last_seen_at": now,
+            "next_refresh_at": now,
+        }
+    candidate_values = list(deduped_candidates.values())
+
+    # Check for candidates that already exist by full_name (avoid full_name key violation)
+    existing_candidates = list(
+        (
+            await session.scalars(
+                select(RepositoryCandidate).where(
+                    RepositoryCandidate.full_name.in_([v["full_name"] for v in candidate_values])
                 )
             )
+        ).all()
+    )
+    existing_by_name = {c.full_name: c for c in existing_candidates}
+
+    new_candidate_values = []
+    for val in candidate_values:
+        existing = existing_by_name.get(val["full_name"])
+        if existing:
+            existing.last_seen_at = now
+            existing.source_score = max(existing.source_score, val["source_score"])
+            if existing.github_id != val["github_id"]:
+                existing.github_id = val["github_id"]
+        else:
+            new_candidate_values.append(val)
+
+    if new_candidate_values:
+        candidates = insert(RepositoryCandidate).values(new_candidate_values)
+        await session.execute(
+            candidates.on_conflict_do_update(
+                index_elements=[RepositoryCandidate.github_id],
+                set_={
+                    "owner": candidates.excluded.owner,
+                    "name": candidates.excluded.name,
+                    "full_name": candidates.excluded.full_name,
+                    "last_seen_at": candidates.excluded.last_seen_at,
+                    "source_score": func.greatest(
+                        RepositoryCandidate.source_score, candidates.excluded.source_score
+                    ),
+                },
+            )
         )
-    ).all()
-    ids = {github_id: candidate_id for github_id, candidate_id in id_rows}
+    await session.flush()
+
+    all_matched = list(
+        (
+            await session.scalars(
+                select(RepositoryCandidate).where(
+                    RepositoryCandidate.full_name.in_([act.full_name for act in result.repositories])
+                )
+            )
+        ).all()
+    )
+    ids = {}
+    for c in all_matched:
+        ids[c.github_id] = c.id
+        ids[c.full_name] = c.id
+
     activities = insert(ExternalRepositoryActivity).values(
         [
             {
-                "candidate_id": ids[activity.github_id],
+                "candidate_id": ids.get(activity.github_id) or ids[activity.full_name],
                 "period_start": hour,
                 "star_events": activity.star_events,
                 "fork_events": activity.fork_events,
@@ -784,6 +827,7 @@ async def persist_gh_archive_hour(
                 "weighted_events": activity.weighted_events,
             }
             for activity in result.repositories
+            if activity.github_id in ids or activity.full_name in ids
         ]
     )
     await session.execute(

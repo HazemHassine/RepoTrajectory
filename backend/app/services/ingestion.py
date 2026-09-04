@@ -3,7 +3,7 @@ from typing import Any
 
 import structlog
 from dateutil.parser import isoparse
-from sqlalchemy import delete, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -282,37 +282,71 @@ class RepositoryIngester:
             if not rows:
                 continue
             total += len(rows)
-            statement = insert(Contributor).values(rows)
-            await self.session.execute(
-                statement.on_conflict_do_update(
-                    index_elements=[Contributor.github_id],
-                    set_={
-                        "login": statement.excluded.login,
-                        "avatar_url": statement.excluded.avatar_url,
-                        "html_url": statement.excluded.html_url,
-                        "contributor_type": statement.excluded.contributor_type,
-                    },
-                )
-            )
-            await self.session.flush()
-            contributors = (
-                await self.session.execute(
-                    select(Contributor.github_id, Contributor.id).where(
-                        Contributor.github_id.in_([row["github_id"] for row in rows])
+
+            unique_rows = {}
+            for row in rows:
+                unique_rows[row["login"]] = row
+            rows = list(unique_rows.values())
+
+            existing_contributors = list(
+                (
+                    await self.session.scalars(
+                        select(Contributor).where(
+                            or_(
+                                Contributor.github_id.in_([row["github_id"] for row in rows]),
+                                Contributor.login.in_([row["login"] for row in rows]),
+                            )
+                        )
                     )
-                )
-            ).all()
-            ids = {github_id: contributor_id for github_id, contributor_id in contributors}
+                ).all()
+            )
+            by_id = {c.github_id: c for c in existing_contributors if c.github_id is not None}
+            by_login = {c.login: c for c in existing_contributors}
+
+            to_insert = []
+            for row in rows:
+                existing = by_id.get(row["github_id"]) or by_login.get(row["login"])
+                if existing:
+                    existing.github_id = row["github_id"]
+                    existing.login = row["login"]
+                    existing.avatar_url = row["avatar_url"]
+                    existing.html_url = row["html_url"]
+                    existing.contributor_type = row["contributor_type"]
+                else:
+                    to_insert.append(row)
+
+            if to_insert:
+                await self.session.execute(insert(Contributor).values(to_insert))
+            await self.session.flush()
+
+            saved_contributors = list(
+                (
+                    await self.session.scalars(
+                        select(Contributor).where(
+                            or_(
+                                Contributor.github_id.in_([row["github_id"] for row in rows]),
+                                Contributor.login.in_([row["login"] for row in rows]),
+                            )
+                        )
+                    )
+                ).all()
+            )
+            ids = {}
+            for c in saved_contributors:
+                if c.github_id is not None:
+                    ids[c.github_id] = c.id
+                ids[c.login] = c.id
+
             contributions = insert(RepositoryContributor).values(
                 [
                     {
                         "repository_id": repo.id,
-                        "contributor_id": ids[item["id"]],
+                        "contributor_id": ids.get(item["id"]) or ids.get(item["login"]),
                         "contributions": item["contributions"],
                         "last_seen_at": datetime.now(UTC),
                     }
                     for item in page
-                    if item.get("id") in ids
+                    if item.get("id") in ids or item.get("login") in ids
                 ]
             )
             await self.session.execute(
