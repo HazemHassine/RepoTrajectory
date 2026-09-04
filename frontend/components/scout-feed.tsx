@@ -9,9 +9,10 @@ import {
 } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useTransition } from "react";
+import React, { useCallback, useMemo, useTransition } from "react";
 
-import { ScoreBar, StatusBadge } from "@/components/ui";
+import { Combobox } from "@/components/combobox";
+import { StatusBadge } from "@/components/ui";
 import type { Facets, ScoutFeedItem } from "@/lib/api";
 import { compact, relativeDate } from "@/lib/format";
 
@@ -26,6 +27,13 @@ interface ScoutFeedProps {
     min_score?: string;
   };
 }
+
+const minScoreOptions = [
+  { value: "50", label: "≥ 50 Promise Score" },
+  { value: "60", label: "≥ 60 Standard Tier" },
+  { value: "75", label: "≥ 75 Top Tier" },
+  { value: "85", label: "≥ 85 Exceptional" },
+];
 
 export function ScoutFeed({
   items,
@@ -59,62 +67,67 @@ export function ScoutFeed({
     [router, pathname, searchParams]
   );
 
-  const availableLanguages =
-    facets?.languages?.map((l) => l.name) ||
-    Array.from(new Set(items.map((i) => i.primary_language).filter(Boolean) as string[])).sort();
+  const availableLanguages = useMemo(() => {
+    if (facets?.languages?.length) {
+      return facets.languages.map((l) => l.name);
+    }
+    return Array.from(
+      new Set(items.map((i) => i.primary_language).filter(Boolean) as string[])
+    ).sort();
+  }, [facets, items]);
+
+  const languageOptions = useMemo(() => {
+    return [
+      { value: "", label: "All Languages" },
+      ...availableLanguages.map((l) => ({ value: l, label: l })),
+    ];
+  }, [availableLanguages]);
 
   return (
     <div className="space-y-6">
       {/* Control bar */}
       <div className="panel flex flex-wrap items-center justify-between gap-4 p-4">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <SparklesIcon className="size-4 text-[#c7ff00]" />
-            <span className="font-mono text-xs font-bold text-[#f1f4ec]">
-              {totalCount.toLocaleString()} High-Promise Candidates Evaluated
+            <SparklesIcon className="size-4 text-[#ccf200]" />
+            <span className="font-mono text-xs font-semibold text-[#ffffff]">
+              {totalCount.toLocaleString()} Evaluated Candidates
             </span>
           </div>
 
-          <div className="h-4 w-px bg-[#343a34]" />
+          <div className="hidden h-4 w-px bg-[#222222] sm:block" />
 
-          {/* Language filter */}
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[9px] uppercase tracking-wider text-[#70776f]">Language:</span>
-            <select
+          {/* Language filter combobox */}
+          <div className="w-48">
+            <Combobox
+              size="sm"
               value={currentFilters.lang || ""}
-              onChange={(e) => updateFilters({ lang: e.target.value || null })}
-              className="border border-[#343a34] bg-[#101310] px-2.5 py-1 font-mono text-[10px] uppercase text-[#f1f4ec] outline-none focus:border-[#c7ff00]"
-            >
-              <option value="">All Languages</option>
-              {availableLanguages.map((l) => (
-                <option key={l} value={l}>
-                  {l}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => updateFilters({ lang: val || null })}
+              options={languageOptions}
+              placeholder="All Languages"
+              searchPlaceholder="Search language…"
+            />
           </div>
 
-          {/* Min score filter */}
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-[9px] uppercase tracking-wider text-[#70776f]">Min Promise:</span>
-            <select
+          {/* Min score filter combobox */}
+          <div className="w-48">
+            <Combobox
+              size="sm"
               value={currentFilters.min_score || "60"}
-              onChange={(e) => updateFilters({ min_score: e.target.value })}
-              className="border border-[#343a34] bg-[#101310] px-2.5 py-1 font-mono text-[10px] uppercase text-[#f1f4ec] outline-none focus:border-[#c7ff00]"
-            >
-              <option value="50">&gt;= 50 Promise</option>
-              <option value="60">&gt;= 60 Promise (Standard)</option>
-              <option value="75">&gt;= 75 Top Tier</option>
-              <option value="85">&gt;= 85 Exceptional</option>
-            </select>
+              onChange={(val) => updateFilters({ min_score: val })}
+              options={minScoreOptions}
+              placeholder="Min Promise Score"
+              searchPlaceholder="Filter score threshold…"
+              clearable={false}
+            />
           </div>
         </div>
 
-        <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-wider text-[#70776f]">
-          {isPending && <span className="text-[#c7ff00] animate-pulse">Updating...</span>}
-          <span>Forks &amp; archived excluded</span>
-          <span>•</span>
-          <span>Low-star discovery enabled</span>
+        <div className="flex items-center gap-3 font-mono text-[10px] text-[#646464]">
+          {isPending && (
+            <span className="animate-pulse text-[#ccf200]">Updating…</span>
+          )}
+          <span>Showing {items.length} discoveries</span>
         </div>
       </div>
 
@@ -123,57 +136,61 @@ export function ScoutFeed({
         {items.map((item) => (
           <article
             key={item.github_id}
-            className="panel border border-[#343a34] bg-[#0c0f0c] p-6 transition-colors hover:border-[#697168]"
+            className="panel border border-[#222222] bg-[#0c0c0c] p-6 transition-colors hover:border-[#333333]"
           >
             <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-              {/* Left Column: Repository Info & AI Assessment */}
+              {/* Left Column: Repository Info & Assessment */}
               <div className="space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <Link
                     href={`/repositories/${item.owner}/${item.name}`}
-                    className="font-mono text-lg font-bold text-[#f1f4ec] hover:text-[#c7ff00]"
+                    className="font-mono text-base font-bold text-[#ffffff] hover:text-[#ccf200]"
                   >
                     {item.full_name}
                   </Link>
                   {item.primary_language && (
-                    <span className="border border-[#343a34] bg-[#101310] px-2 py-0.5 font-mono text-[9px] font-bold text-[#c7ff00]">
+                    <span className="rounded border border-[#222222] bg-[#161616] px-2 py-0.5 font-mono text-[10px] font-semibold text-[#ccf200]">
                       {item.primary_language}
                     </span>
                   )}
                   {item.license && (
-                    <span className="border border-[#343a34] bg-[#101310] px-2 py-0.5 font-mono text-[9px] text-[#9ba399]">
+                    <span className="rounded border border-[#222222] bg-[#161616] px-2 py-0.5 font-mono text-[10px] text-[#9a9a9a]">
                       {item.license}
                     </span>
                   )}
-                  <span className="font-mono text-[10px] text-[#70776f]">
-                    Pushed {relativeDate(item.pushed_at)}
+                  <span className="font-mono text-[10px] text-[#646464]">
+                    Updated {relativeDate(item.pushed_at)}
                   </span>
                 </div>
 
-                <p className="text-sm leading-relaxed text-[#b9c0b7]">
+                <p className="text-xs leading-relaxed text-[#9a9a9a]">
                   {item.description || "No project description provided."}
                 </p>
 
                 {/* Why it surfaced */}
-                <div className="rounded border-l-2 border-[#c7ff00] bg-[#101310] p-4">
-                  <p className="font-mono text-[9px] font-black uppercase tracking-wider text-[#c7ff00]">
-                    Why It Surfaced (AI &amp; Momentum Reasoning)
+                <div className="rounded-md border-l-2 border-[#ccf200] bg-[#090909] p-3.5">
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#ccf200]">
+                    Evaluation Context
                   </p>
-                  <p className="mt-1.5 text-xs leading-5 text-[#f1f4ec]">
-                    {item.why_it_surfaced || "High velocity human commits and release cadence relative to community size."}
+                  <p className="mt-1 text-xs leading-relaxed text-[#ffffff]">
+                    {item.why_it_surfaced ||
+                      "High velocity human commits and release cadence relative to community size."}
                   </p>
                 </div>
 
                 {/* Supporting Facts Checklist */}
                 {item.supporting_facts && item.supporting_facts.length > 0 && (
                   <div>
-                    <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-[#70776f]">
+                    <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[#646464]">
                       Supporting Evidence
                     </p>
                     <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
                       {item.supporting_facts.map((fact, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-xs text-[#9ba399]">
-                          <CheckCircleIcon className="size-3.5 shrink-0 text-[#c7ff00] mt-0.5" />
+                        <li
+                          key={idx}
+                          className="flex items-start gap-2 text-xs text-[#9a9a9a]"
+                        >
+                          <CheckCircleIcon className="mt-0.5 size-3.5 shrink-0 text-[#ccf200]" />
                           <span>{fact}</span>
                         </li>
                       ))}
@@ -181,17 +198,17 @@ export function ScoutFeed({
                   </div>
                 )}
 
-                {/* Risk Flags & Uncertainty */}
-                <div className="flex flex-wrap items-center gap-4 pt-2">
+                {/* Risk Flags */}
+                <div className="flex flex-wrap items-center gap-4 pt-1">
                   {item.risk_flags && item.risk_flags.length > 0 ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-[9px] uppercase tracking-wider text-[#e5534b]">
-                        Identified Risks:
+                      <span className="font-mono text-[10px] text-amber-400">
+                        Observed Factors:
                       </span>
                       {item.risk_flags.map((risk, idx) => (
                         <span
                           key={idx}
-                          className="inline-flex items-center gap-1 border border-[#e5534b]/30 bg-[#1f1212] px-2 py-0.5 font-mono text-[9px] text-[#f87171]"
+                          className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] text-amber-300"
                         >
                           <ExclamationTriangleIcon className="size-3" />
                           {risk}
@@ -199,13 +216,14 @@ export function ScoutFeed({
                       ))}
                     </div>
                   ) : (
-                    <span className="inline-flex items-center gap-1 font-mono text-[9px] text-[#70776f]">
-                      <CheckCircleIcon className="size-3 text-[#c7ff00]" /> No critical risk flags detected
+                    <span className="inline-flex items-center gap-1.5 font-mono text-[10px] text-[#646464]">
+                      <CheckCircleIcon className="size-3.5 text-[#ccf200]" />
+                      No elevated risk flags observed
                     </span>
                   )}
 
                   {item.uncertainty && (
-                    <span className="inline-flex items-center gap-1 font-mono text-[9px] text-[#70776f]">
+                    <span className="inline-flex items-center gap-1 font-mono text-[10px] text-[#646464]">
                       <InformationCircleIcon className="size-3" />
                       {item.uncertainty}
                     </span>
@@ -213,19 +231,20 @@ export function ScoutFeed({
                 </div>
               </div>
 
-              {/* Right Column: Score Breakdown & Stats */}
-              <div className="flex flex-col justify-between border-t border-[#343a34] pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+              {/* Right Column: Score Breakdown */}
+              <div className="flex flex-col justify-between border-t border-[#222222] pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
                 <div className="space-y-4">
-                  {/* Promise Score Big Display */}
-                  <div className="panel border border-[#343a34] bg-[#101310] p-4 text-center">
-                    <span className="font-mono text-[9px] font-black uppercase tracking-wider text-[#70776f]">
-                      Scout Promise Score
+                  <div className="panel border border-[#222222] bg-[#090909] p-4 text-center">
+                    <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[#646464]">
+                      Promise Score
                     </span>
                     <div className="mt-1 flex items-baseline justify-center gap-1">
-                      <span className="font-mono text-3xl font-black text-[#c7ff00]">
+                      <span className="font-mono text-3xl font-bold text-[#ccf200]">
                         {item.promise_score}
                       </span>
-                      <span className="font-mono text-xs text-[#70776f]">/100</span>
+                      <span className="font-mono text-xs text-[#646464]">
+                        /100
+                      </span>
                     </div>
                     <div className="mt-2 text-center">
                       <StatusBadge
@@ -236,42 +255,56 @@ export function ScoutFeed({
                             ? "Emerging Signal"
                             : "Early Discovery"
                         }
-                        tone={item.promise_score >= 80 ? "positive" : "warning"}
+                        tone={
+                          item.promise_score >= 80 ? "positive" : "warning"
+                        }
                       />
                     </div>
                   </div>
 
-                  {/* 70/30 Score Breakdown */}
-                  <div className="space-y-2 font-mono text-[10px]">
-                    <div className="flex justify-between text-[#9ba399]">
-                      <span>Quantitative (70%):</span>
-                      <span className="font-bold text-[#f1f4ec]">
-                        {item.score_components?.quantitative_score?.toFixed(1) ?? "—"}
+                  {/* Score Breakdown */}
+                  <div className="space-y-1.5 font-mono text-[10px]">
+                    <div className="flex justify-between text-[#9a9a9a]">
+                      <span>Quantitative:</span>
+                      <span className="font-bold text-[#ffffff]">
+                        {item.score_components?.quantitative_score?.toFixed(
+                          1
+                        ) ?? "—"}
                       </span>
                     </div>
-                    <div className="flex justify-between text-[#9ba399]">
-                      <span>AI Assessment (30%):</span>
-                      <span className="font-bold text-[#f1f4ec]">
+                    <div className="flex justify-between text-[#9a9a9a]">
+                      <span>AI Assessment:</span>
+                      <span className="font-bold text-[#ffffff]">
                         {item.score_components?.ai_score?.toFixed(1) ?? "—"}
                       </span>
                     </div>
-                    <div className="flex justify-between text-[#9ba399]">
+                    <div className="flex justify-between text-[#9a9a9a]">
                       <span>Confidence:</span>
-                      <span className="font-bold text-[#c7ff00]">
-                        {item.confidence ? `${Math.round(item.confidence * 100)}%` : "70%"}
+                      <span className="font-bold text-[#ccf200]">
+                        {item.confidence
+                          ? `${Math.round(item.confidence * 100)}%`
+                          : "70%"}
                       </span>
                     </div>
                   </div>
 
                   {/* Scale Stats */}
-                  <div className="grid grid-cols-2 gap-2 border-t border-[#343a34] pt-3 font-mono text-center">
+                  <div className="grid grid-cols-2 gap-2 border-t border-[#222222] pt-3 font-mono text-center">
                     <div>
-                      <span className="block text-[8px] uppercase text-[#70776f]">Stars</span>
-                      <b className="text-xs text-[#f1f4ec]">{compact(item.stars)}</b>
+                      <span className="block text-[9px] uppercase text-[#646464]">
+                        Stars
+                      </span>
+                      <b className="text-xs text-[#ffffff]">
+                        {compact(item.stars)}
+                      </b>
                     </div>
                     <div>
-                      <span className="block text-[8px] uppercase text-[#70776f]">Forks</span>
-                      <b className="text-xs text-[#f1f4ec]">{compact(item.forks)}</b>
+                      <span className="block text-[9px] uppercase text-[#646464]">
+                        Forks
+                      </span>
+                      <b className="text-xs text-[#ffffff]">
+                        {compact(item.forks)}
+                      </b>
                     </div>
                   </div>
                 </div>
@@ -279,9 +312,10 @@ export function ScoutFeed({
                 <div className="pt-4">
                   <Link
                     href={`/repositories/${item.owner}/${item.name}`}
-                    className="flex w-full items-center justify-center gap-2 border border-[#697168] bg-[#101310] py-2 font-mono text-[10px] font-bold uppercase text-[#c7ff00] hover:border-[#c7ff00] hover:bg-[#171b17]"
+                    className="button-secondary w-full"
                   >
-                    View 5-Section Profile <ArrowRightIcon className="size-3" />
+                    <span>Inspect Repository</span>
+                    <ArrowRightIcon className="size-3.5" />
                   </Link>
                 </div>
               </div>
@@ -290,7 +324,7 @@ export function ScoutFeed({
         ))}
 
         {items.length === 0 && (
-          <div className="panel p-12 text-center font-mono text-xs uppercase text-[#9ba399]">
+          <div className="panel p-12 text-center font-mono text-xs text-[#9a9a9a]">
             No Scout discoveries meet the current filter criteria.
           </div>
         )}
@@ -303,7 +337,7 @@ export function ScoutFeed({
             type="button"
             onClick={() => updateFilters({ cursor: nextCursor })}
             disabled={isPending}
-            className="border border-[#c7ff00] bg-[#c7ff00] px-6 py-2.5 font-mono text-[10px] font-black uppercase text-[#080a08] transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="button-primary"
           >
             Load More Discoveries
           </button>
