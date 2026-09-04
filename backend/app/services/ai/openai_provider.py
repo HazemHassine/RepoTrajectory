@@ -20,10 +20,17 @@ class OpenAIProvider(AIProvider):
 
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
-        self.base_url = self.settings.ai_base_url.rstrip("/")
-        self.api_key = self.settings.ai_api_key
+        self.api_key = self.settings.effective_ai_api_key
         self.embedding_model = self.settings.ai_embedding_model
         self.evaluation_model = self.settings.ai_evaluation_model
+        # Direct Gemini or compatible endpoint
+        if (
+            (self.settings.gemini_api_key or "gemini" in self.evaluation_model.lower())
+            and "api.openai.com" in self.settings.ai_base_url
+        ):
+            self.base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
+        else:
+            self.base_url = self.settings.ai_base_url.rstrip("/")
         self.fallback = FallbackAIProvider(dimension=self.settings.ai_embedding_dimension)
 
     def _client(self) -> httpx.AsyncClient:
@@ -111,7 +118,14 @@ class OpenAIProvider(AIProvider):
                     return await self.fallback.evaluate_scout(candidate_data)
 
                 payload = response.json()
-                content = payload["choices"][0]["message"]["content"]
+                content = (payload.get("choices", [{}])[0].get("message", {}).get("content") or "").strip()
+                if content.startswith("```"):
+                    lines = content.splitlines()
+                    if lines and lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines and lines[-1].strip() == "```":
+                        lines = lines[:-1]
+                    content = "\n".join(lines).strip()
                 parsed = json.loads(content)
 
                 return ScoutAIEvaluation(
@@ -128,16 +142,17 @@ class OpenAIProvider(AIProvider):
                     prompt_version="v1",
                 )
         except Exception as exc:
-            log.warning("openai_eval_exception", error=str(exc))
+            log.warning("ai_eval_exception", error=str(exc))
             return await self.fallback.evaluate_scout(candidate_data)
 
     async def health(self) -> dict[str, Any]:
+        provider_name = "gemini_compatible" if "generativelanguage" in self.base_url or "gemini" in self.evaluation_model.lower() else "openai_compatible"
         if not self.api_key:
             return {
                 "available": False,
                 "status": "degraded",
-                "provider": "openai_compatible",
-                "detail": "AI_API_KEY is not configured; using heuristic fallback.",
+                "provider": provider_name,
+                "detail": "AI_API_KEY / GEMINI_API_KEY is not configured; using heuristic fallback.",
             }
         try:
             async with self._client() as client:
@@ -146,7 +161,7 @@ class OpenAIProvider(AIProvider):
                     return {
                         "available": True,
                         "status": "healthy",
-                        "provider": "openai_compatible",
+                        "provider": provider_name,
                         "base_url": self.base_url,
                         "embedding_model": self.embedding_model,
                         "evaluation_model": self.evaluation_model,
@@ -154,13 +169,13 @@ class OpenAIProvider(AIProvider):
                 return {
                     "available": False,
                     "status": "degraded",
-                    "provider": "openai_compatible",
+                    "provider": provider_name,
                     "detail": f"Model endpoint returned {response.status_code}",
                 }
         except Exception as exc:
             return {
                 "available": False,
                 "status": "degraded",
-                "provider": "openai_compatible",
+                "provider": provider_name,
                 "detail": f"Connection failed: {exc}",
             }

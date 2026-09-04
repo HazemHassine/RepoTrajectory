@@ -53,12 +53,17 @@ class Settings(BaseSettings):
     gh_archive_lag_hours: int = 3
     gh_archive_retention_days: int = 90
     gh_archive_top_repositories_per_hour: int = 500
-    ai_base_url: str = "https://api.openai.com/v1"
+    ai_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     ai_api_key: str | None = None
+    gemini_api_key: str | None = None
     ai_embedding_model: str = "text-embedding-3-small"
-    ai_evaluation_model: str = "gpt-4o-mini"
+    ai_evaluation_model: str = "gemini-3.8-flash"
     ai_embedding_dimension: int = 1536
     ai_embedding_version: str = "v1"
+
+    @property
+    def effective_ai_api_key(self) -> str | None:
+        return self.gemini_api_key or self.ai_api_key
     directory_limit: int = 10000
     candidate_pool_limit: int = 50000
     candidate_retention_days: int = 90

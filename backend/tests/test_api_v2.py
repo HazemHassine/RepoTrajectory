@@ -91,7 +91,7 @@ async def test_api_v2_unified_profile(client, db_session):
         supporting_facts=["Fast issue resolution", "Zero known vulnerabilities"],
         risk_flags=[],
         score_components={},
-        model_identity="gpt-4o-mini",
+        model_identity="gemini-3.8-flash",
         created_at=now,
         expires_at=now + timedelta(days=7),
         is_current=True
@@ -109,7 +109,7 @@ async def test_api_v2_unified_profile(client, db_session):
     # Section 4: Scout & Investor momentum
     assert data["scout"] is not None
     assert data["scout"]["promise_score"] == 84.5
-    assert data["scout"]["model_identity"] == "gpt-4o-mini"
+    assert data["scout"]["model_identity"] == "gemini-3.8-flash"
     
     # Section 5: Provenance
     assert "provenance" in data

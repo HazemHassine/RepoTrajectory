@@ -228,7 +228,7 @@ async def seed_benchmark_dataset(
                         "ai": {"clarity": 90, "usefulness": 85},
                     },
                     "evidence_references": {"stars": stars, "forks": forks},
-                    "model_identity": "gpt-4o-mini",
+                    "model_identity": "gemini-3.8-flash",
                     "prompt_version": "v1",
                     "created_at": now,
                     "expires_at": now + timedelta(days=7),

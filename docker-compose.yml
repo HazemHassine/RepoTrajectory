@@ -57,6 +57,7 @@ services:
       retries: 10
     networks:
       - internal
+      - public
     restart: unless-stopped
 
   collector:
@@ -71,6 +72,7 @@ services:
         condition: service_healthy
     networks:
       - internal
+      - public
     restart: unless-stopped
 
   web:

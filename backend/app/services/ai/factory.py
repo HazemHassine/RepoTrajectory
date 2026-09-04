@@ -6,6 +6,6 @@ from app.services.ai.openai_provider import OpenAIProvider
 
 def get_ai_provider(settings: Settings | None = None) -> AIProvider:
     cfg = settings or get_settings()
-    if cfg.ai_api_key:
+    if cfg.effective_ai_api_key:
         return OpenAIProvider(cfg)
     return FallbackAIProvider(dimension=cfg.ai_embedding_dimension)

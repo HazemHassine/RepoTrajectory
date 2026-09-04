@@ -316,9 +316,13 @@ class CollectorWorker:
         job.locked_by = self.worker_id
         job.started_at = job.started_at or now
         job.attempts += 1
-        job.updated_at = now
-        await session.commit()
-        return job
+        try:
+            await session.commit()
+            return job
+        except Exception as exc:
+            await session.rollback()
+            log.error("collector_claim_commit_failed", job_id=job.id, error=str(exc))
+            return None
 
     async def _execute(self, job_id: int) -> None:
         async with SessionLocal() as session:
@@ -625,6 +629,9 @@ async def collector_overview(session: AsyncSession) -> dict[str, Any]:
     )
     oldest_queued = await session.scalar(
         select(func.min(IngestionJob.created_at)).where(IngestionJob.status == "queued")
+    )
+    last_completed = await session.scalar(
+        select(func.max(IngestionJob.finished_at)).where(IngestionJob.status == "completed")
     )
     try:
         database_size = await session.scalar(select(func.pg_database_size(func.current_database())))
