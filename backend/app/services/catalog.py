@@ -150,6 +150,8 @@ async def generate_catalog_embeddings(
     """Generate and store versioned embeddings for catalog repositories lacking current embeddings."""
     cfg = settings or get_settings()
     provider = ai_provider or get_ai_provider(cfg)
+    if not provider.semantic_available:
+        return 0
     version = cfg.ai_embedding_version
     model = cfg.ai_embedding_model
 

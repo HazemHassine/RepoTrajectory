@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timezone, timedelta
-from app.db.models import CatalogRepository, ScoutAssessment, ExternalRepositoryActivity
+from app.db.models import CatalogRepository, RepositoryCandidate, ExternalRepositoryActivity
 from app.services.scout import (
     is_scout_eligible,
     calculate_quantitative_scout_score,
@@ -40,9 +40,22 @@ async def test_low_star_repo_promise_evaluation(db_session):
     )
     db_session.add(repo)
     
-    # Add recent activity events
+    candidate = RepositoryCandidate(
+        id=42, github_id=repo.github_id, owner=repo.owner, name=repo.name,
+        full_name=repo.full_name, source="gharchive", discovered_at=now, last_seen_at=now,
+    )
+    unrelated = RepositoryCandidate(
+        id=repo.github_id, github_id=999999, owner="other", name="project",
+        full_name="other/project", source="gharchive", discovered_at=now, last_seen_at=now,
+    )
+    db_session.add_all([candidate, unrelated])
+    await db_session.flush()
+    db_session.add(ExternalRepositoryActivity(
+        candidate_id=unrelated.id, period_start=now, star_events=999,
+    ))
+    # Candidate identity deliberately differs from the stable external GitHub ID.
     activity = ExternalRepositoryActivity(
-        candidate_id=repo.github_id,
+        candidate_id=candidate.id,
         period_start=now - timedelta(days=2),
         push_events=50,
         release_events=4,
@@ -61,6 +74,8 @@ async def test_low_star_repo_promise_evaluation(db_session):
     )
     
     assert assessment is not None
+    assert assessment.evidence_references["recent_events"]["star_events"] == 6
+    assert assessment.evidence_references["recent_events"]["push_events"] == 50
     assert assessment.promise_score >= 60.0
     assert assessment.confidence >= 0.5
     assert len(assessment.supporting_facts) > 0

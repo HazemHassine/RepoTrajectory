@@ -1,4 +1,3 @@
-import hashlib
 import math
 from typing import Any
 
@@ -15,21 +14,8 @@ class FallbackAIProvider(AIProvider):
         self.dimension = dimension
 
     async def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        results: list[list[float]] = []
-        for text in texts:
-            # Deterministic pseudo-vector seeded by text content
-            normalized = text.strip().casefold()
-            hasher = hashlib.sha256(normalized.encode("utf-8"))
-            digest = hasher.digest()
-            # Generate deterministic unit-normalized vector
-            raw_vals: list[float] = []
-            for i in range(self.dimension):
-                b = digest[(i * 7) % len(digest)]
-                val = ((b / 255.0) - 0.5) * 2.0
-                raw_vals.append(val)
-            norm = math.sqrt(sum(v * v for v in raw_vals)) or 1.0
-            results.append([v / norm for v in raw_vals])
-        return results
+        """No local semantic model is installed. Never fabricate vectors."""
+        return []
 
     async def evaluate_scout(self, candidate_data: dict[str, Any]) -> ScoutAIEvaluation:
         desc = str(candidate_data.get("description") or "").strip()
@@ -84,8 +70,8 @@ class FallbackAIProvider(AIProvider):
         )
 
         why = (
-            f"Surfaced based on strong code activity in {lang or 'open source'}"
-            f" with {len(topics)} structured topics and focused scope."
+            f"Selected for investigation from {lang or 'language unknown'} repository metadata."
+            " Inspect recent changes and documentation to judge suitability."
         )
 
         facts = [
@@ -97,9 +83,7 @@ class FallbackAIProvider(AIProvider):
             facts.append(f"Standard open source license: {license_name}")
 
         uncertainty = (
-            "Early stage project with limited historical telemetry."
-            if stars < 50
-            else None
+            "Metadata alone does not establish adoption, maturity, or deployment requirements."
         )
 
         risk_flags = []
@@ -108,7 +92,7 @@ class FallbackAIProvider(AIProvider):
         if not desc:
             risk_flags.append("Sparse repository description")
         if stars < 5 and forks == 0:
-            risk_flags.append("Low external peer review")
+            risk_flags.append("Limited observed GitHub attention")
 
         return ScoutAIEvaluation(
             clarity=clarity,
@@ -127,6 +111,7 @@ class FallbackAIProvider(AIProvider):
     async def health(self) -> dict[str, Any]:
         return {
             "available": False,
+            "semantic_available": False,
             "status": "degraded",
             "provider": "fallback_heuristic",
             "detail": "Hosted AI credentials not configured; serving fallback scoring and search.",

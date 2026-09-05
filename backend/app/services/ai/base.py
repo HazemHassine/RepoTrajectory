@@ -33,6 +33,8 @@ class AIServiceUnavailableError(RuntimeError):
 
 
 class AIProvider(ABC):
+    semantic_available: bool = False
+
     @abstractmethod
     async def embed_texts(self, texts: list[str]) -> list[list[float]]:
         """Compute vector embeddings for a list of input texts."""

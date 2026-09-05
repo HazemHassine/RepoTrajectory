@@ -15,6 +15,7 @@ from app.db.models import (
     Issue,
     PullRequest,
     Release,
+    RepositoryCandidate,
     RepositorySnapshot,
     ScoutAssessment,
 )
@@ -202,8 +203,9 @@ async def evaluate_candidate_scout(
                 func.sum(ExternalRepositoryActivity.issue_events).label("issue_events"),
                 func.sum(ExternalRepositoryActivity.release_events).label("release_events"),
             )
+            .join(RepositoryCandidate, RepositoryCandidate.id == ExternalRepositoryActivity.candidate_id)
             .where(
-                ExternalRepositoryActivity.candidate_id == repo.github_id,
+                RepositoryCandidate.github_id == repo.github_id,
                 ExternalRepositoryActivity.period_start >= recent_cutoff,
             )
         )

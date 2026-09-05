@@ -21,6 +21,7 @@ class OpenAIProvider(AIProvider):
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
         self.api_key = self.settings.effective_ai_api_key
+        self.semantic_available = bool(self.api_key and self.settings.ai_enabled)
         self.embedding_model = self.settings.ai_embedding_model
         self.evaluation_model = self.settings.ai_evaluation_model
         # Direct Gemini or compatible endpoint

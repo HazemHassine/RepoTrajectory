@@ -183,7 +183,9 @@ async def test_query_embedding_caching(db_session):
     
     emb1 = await get_or_create_query_embedding(db_session, query=query, ai_provider=ai_provider, settings=settings)
     assert emb1 is not None
-    assert len(emb1) == 1536
+    assert emb1 == []
+    assert ai_provider.semantic_available is False
+    assert await db_session.get(QueryEmbeddingCache, (query, settings.ai_embedding_model)) is None
     
     # Second call should fetch from cache
     emb2 = await get_or_create_query_embedding(db_session, query=query, ai_provider=ai_provider, settings=settings)

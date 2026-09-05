@@ -42,11 +42,13 @@ async def get_or_create_query_embedding(
     settings: Settings,
 ) -> list[float]:
     """Retrieve cached query embedding or compute and persist a new one."""
+    if not ai_provider.semantic_available:
+        return []
     normalized = query.strip().casefold()
-    model = settings.ai_embedding_model
+    model = f"{settings.ai_embedding_version}:{settings.ai_embedding_model}"
 
     cached = await session.get(QueryEmbeddingCache, (normalized, model))
-    if cached and cached.embedding:
+    if cached and len(cached.embedding) == settings.ai_embedding_dimension:
         return list(cached.embedding)
 
     embeddings = await ai_provider.embed_texts([normalized])
@@ -156,6 +158,7 @@ async def hybrid_search(
                     RepositoryEmbedding.github_id == CatalogRepository.github_id,
                 )
                 .where(RepositoryEmbedding.embedding_version == cfg.ai_embedding_version)
+                .where(RepositoryEmbedding.model == cfg.ai_embedding_model)
             )
             vector_stmt = _apply_sql_filters(vector_stmt, filters)
 
@@ -164,7 +167,8 @@ async def hybrid_search(
                 vector_stmt = vector_stmt.order_by(
                     RepositoryEmbedding.embedding.cosine_distance(query_vector)
                 ).limit(fetch_candidates)
-                vector_ids = list((await session.scalars(vector_stmt)).all())
+                async with session.begin_nested():
+                    vector_ids = list((await session.scalars(vector_stmt)).all())
                 for rank, gid in enumerate(vector_ids):
                     vector_ranks[gid] = rank + 1
                 if vector_ids:

@@ -55,11 +55,12 @@ class Settings(BaseSettings):
     gh_archive_top_repositories_per_hour: int = 500
     ai_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     ai_api_key: str | None = None
+    ai_enabled: bool = False
     gemini_api_key: str | None = None
     ai_embedding_model: str = "text-embedding-3-small"
     ai_evaluation_model: str = "gemini-3.8-flash"
     ai_embedding_dimension: int = 1536
-    ai_embedding_version: str = "v1"
+    ai_embedding_version: str = "semantic-v2"
 
     @property
     def effective_ai_api_key(self) -> str | None:
