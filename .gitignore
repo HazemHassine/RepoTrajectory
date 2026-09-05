@@ -18,3 +18,6 @@ coverage/
 plan.md
 deployment.md
 *.tsbuildinfo
+
+# Locally generated radar companion book (HTML source stays versioned).
+docs/project-book/RepoTrajectory-Developer-Radar-Project-Book.pdf
