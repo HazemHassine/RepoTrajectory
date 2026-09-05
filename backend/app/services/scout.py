@@ -160,7 +160,7 @@ async def evaluate_candidate_scout(
     ai_provider: AIProvider | None = None,
     settings: Settings | None = None,
 ) -> ScoutAssessment:
-    """Run full Scout evaluation on one repository: 70% quantitative evidence + 30% structured AI."""
+    """Evaluate Scout using the existing quantitative and qualitative methodology."""
     cfg = settings or get_settings()
     provider = ai_provider or get_ai_provider(cfg)
 

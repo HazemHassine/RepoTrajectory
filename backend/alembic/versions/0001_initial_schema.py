@@ -24,8 +24,16 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     for table in (
-        "metric_snapshots", "repository_topics", "repository_languages", "releases",
-        "issues", "pull_requests", "commits", "repository_contributors",
-        "repository_snapshots", "contributors", "repositories",
+        "metric_snapshots",
+        "repository_topics",
+        "repository_languages",
+        "releases",
+        "issues",
+        "pull_requests",
+        "commits",
+        "repository_contributors",
+        "repository_snapshots",
+        "contributors",
+        "repositories",
     ):
         op.drop_table(table)

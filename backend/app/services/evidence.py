@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.db.models import (
+    AIUsage,
     CatalogRepository,
     ExternalEvidenceItem,
     Issue,
@@ -477,6 +478,16 @@ async def collect_repository_evidence(
 
 async def prune_evidence(session: AsyncSession, cfg: Settings, gid: int | None = None) -> None:
     cutoff = datetime.now(UTC) - timedelta(days=cfg.evidence_retention_days)
+    await session.execute(
+        delete(AIUsage).where(
+            AIUsage.observed_at < datetime.now(UTC) - timedelta(days=60),
+        )
+    )
+    await session.execute(
+        delete(RepositorySourceState).execution_options(synchronize_session=False).where(
+            RepositorySourceState.last_attempt_at < cutoff,
+        )
+    )
     for model, column in (
         (RepositoryChangeEvent, RepositoryChangeEvent.observed_at),
         (ExternalEvidenceItem, ExternalEvidenceItem.observed_at),

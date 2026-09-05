@@ -146,7 +146,7 @@ async def generate_catalog_embeddings(
     settings: Settings | None = None,
     ai_provider: AIProvider | None = None,
 ) -> int:
-    """Generate and store versioned embeddings for catalog repositories lacking current embeddings."""
+    """Generate real, versioned embeddings for catalog repositories missing them."""
     cfg = settings or get_settings()
     provider = ai_provider or get_ai_provider(cfg)
     if not provider.semantic_available:
@@ -186,7 +186,7 @@ async def generate_catalog_embeddings(
     now = datetime.now(UTC)
 
     count = 0
-    for repo, vec in zip(targets, embeddings):
+    for repo, vec in zip(targets, embeddings, strict=False):
         if not vec:
             continue
         emb_stmt = (

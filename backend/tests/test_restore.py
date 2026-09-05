@@ -13,7 +13,9 @@ def test_restore_failure_is_not_reported_as_success(tmp_path):
     result = subprocess.run(
         ["bash", str(script), str(archive)],
         env={**os.environ, "PATH": f"{tmp_path}:{os.environ['PATH']}"},
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert result.returncode == 7
     assert "completed successfully" not in result.stdout

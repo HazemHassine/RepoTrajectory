@@ -1,13 +1,13 @@
-# RepoTrajectory — Repository Intelligence
+# RepoTrajectory — Developer Technology Radar
 
-RepoTrajectory builds an explainable, continuously refreshed evidence base for open-source
-software. It combines GitHub REST data with compact GH Archive adoption signals to answer which
-repositories are gaining momentum, sustaining healthy delivery, attracting contributors, or
-becoming concentrated around a small number of people.
+RepoTrajectory helps developers discover open-source tools, evaluate whether they fit a project,
+compare alternatives, and understand what changed after a decision.
 
-The interface is an institutional research console: portfolio overview, repository directory,
-rankings, comparisons, dossiers, methodology governance, and a dedicated **Collection control**
-workspace. A deterministic Signal Ledger translates model output into traceable observations.
+Discover → Understand → Compare → Decide → Watch. Explore technology topics, inspect a project
+brief with source provenance, compare explicit constraints, and save why you are watching a tool.
+Existing analytics remain available in expandable sections. Hosted AI is disabled by default;
+lexical search, deterministic briefs, comparison and browser-local watches work without AI keys.
+See [the product architecture, limits and operating model](docs/product-radar.md).
 
 ## Run the complete app
 
