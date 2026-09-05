@@ -161,7 +161,7 @@ function SignalReadout({ active, visible, total, pinned }: { active?: Point; vis
         <ReadoutMetric label="Momentum" value={Math.round(active.y).toString()} />
         <ReadoutMetric label="Health" value={Math.round(active.x).toString()} />
         <ReadoutMetric label="Stars" value={compact(active.stars)} />
-        <ReadoutMetric label="Confidence" value={confidence == null ? "—" : `${Math.round(confidence)}%`} />
+        <ReadoutMetric label="Evidence coverage" value={confidence == null ? "Unknown" : `${Math.round(confidence)}%`} />
       </div>
       <div className="mt-4 border-l border-[#ccf200] pl-3"><p className="font-mono text-[9px] uppercase text-[#9a9a9a]">Contribution concentration</p><p className="mt-1 font-mono text-sm font-bold">{concentration == null ? "—" : Math.round(concentration)}<span className="ml-1 text-[8px] font-normal text-[#646464]">/ 100 RISK</span></p></div>
     </div>

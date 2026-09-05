@@ -229,13 +229,13 @@ async function get<T>(path: string): Promise<T> {
   return response.json();
 }
 
-async function getV2<T>(path: string): Promise<T> {
+export async function getV2<T>(path: string): Promise<T> {
   const response = await fetch(`${apiBase()}/api/v2${path}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`API v2 returned ${response.status} for ${path}`);
   return response.json();
 }
 
-async function postV2<T>(path: string, body: any): Promise<T> {
+export async function postV2<T>(path: string, body: unknown): Promise<T> {
   const response = await fetch(`${apiBase()}/api/v2${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -289,4 +289,3 @@ export function mergeRepositories(repositories: Repo[], metrics: Metric[]): Repo
   const byName = new Map(metrics.map((metric) => [metric.repository.toLowerCase(), metric]));
   return repositories.map((repository) => ({ ...repository, metric: byName.get(repository.full_name.toLowerCase()) }));
 }
-

@@ -409,7 +409,7 @@ export function RepositoryDirectory({
                   {activeLens === "investor" && (
                     <>
                       <td className="px-4">
-                        <ScoreBar compact value={record.promise_score ?? 50} />
+                        <ScoreBar compact value={record.promise_score} />
                       </td>
                       <td className="px-4">
                         <span className="font-mono text-xs font-semibold text-[#ccf200]">

@@ -1,0 +1,16 @@
+digraph G {
+  graph [bgcolor="transparent", rankdir=LR, pad=.25, nodesep=.55, ranksep=.8];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=11, color="#384152", fillcolor="#151922", fontcolor="#f4f7fb", penwidth=1.2, margin=".18,.12"];
+  edge [color="#8ea0b5", fontcolor="#aebdcb", fontname="Arial", fontsize=9, arrowsize=.7];
+  users [label="Researchers /\nMaintainers / Investors", fillcolor="#1d2430"];
+  admin [label="Local operator", fillcolor="#1d2430"];
+  github [label="GitHub REST +\nSearch APIs", fillcolor="#221d30"];
+  gha [label="GH Archive\nhourly gzip", fillcolor="#221d30"];
+  ai [label="OpenAI-compatible\nAI provider", fillcolor="#221d30"];
+  rt [label="REPOTRAJECTORY\nRepository intelligence system", fillcolor="#a6d800", fontcolor="#091000", color="#c9ff00", penwidth=2];
+  users -> rt [label="browse, search, compare"];
+  admin -> rt [label="authenticated operations"];
+  github -> rt [label="metadata + entities"];
+  gha -> rt [label="public event signals"];
+  ai -> rt [dir=both, label="embeddings + evaluation"];
+}

@@ -40,6 +40,7 @@ export default async function Repositories({
     freshness_counts: {},
   };
   let unavailable = false;
+  let retrievalMode: string | null = null;
 
   try {
     const [res, fac] = await Promise.all([
@@ -56,43 +57,13 @@ export default async function Repositories({
     ]);
     catalogResponse = res;
     facets = fac;
-  } catch {
-    // If v2 fails, try v1 fallback or mark unavailable
-    try {
-      const v1Repos = await api.repos();
-      catalogResponse = {
-        items: v1Repos.map((r, idx) => ({
-          github_id: idx + 1,
-          owner: r.owner,
-          name: r.name,
-          full_name: r.full_name,
-          description: r.description,
-          primary_language: r.primary_language,
-          license: r.license,
-          default_branch: r.default_branch,
-          stars: r.stars,
-          forks: r.forks,
-          watchers: r.watchers,
-          open_issues: r.open_issues,
-          created_at: r.created_at,
-          updated_at: r.updated_at,
-          pushed_at: r.pushed_at,
-          tier: "directory",
-          is_directory: true,
-          is_deep: false,
-          classification: "general",
-          classification_confidence: 0.8,
-          topics: [] as string[],
-          selection_score: 50,
-          promise_score: null,
-          scout_eligible: false,
-        })),
-        next_cursor: null,
-        total_count: v1Repos.length,
-      };
-    } catch {
-      unavailable = true;
+    if (search) {
+      const result = await api.v2.search(search, { language }, cursor, 50);
+      catalogResponse = { items: result.items, total_count: result.total_count, next_cursor: result.next_cursor };
+      retrievalMode = result.result_rationale;
     }
+  } catch {
+    unavailable = true;
   }
 
   return (
@@ -107,6 +78,7 @@ export default async function Repositories({
         }
       />
       <div className="mx-auto max-w-[1440px] px-5 py-6 md:px-8 xl:px-10">
+        {retrievalMode && <p className="mb-4 text-xs text-[#9a9a9a]">{retrievalMode}</p>}
         {unavailable ? (
           <EmptyState
             title="Directory API unavailable"

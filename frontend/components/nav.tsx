@@ -20,7 +20,9 @@ import { startProductTour } from "@/components/first-run-tutorial";
 import { API, type CatalogRepo } from "@/lib/api";
 
 const navigation = [
-  { href: "/", label: "Home", icon: RectangleGroupIcon },
+  { href: "/", label: "Discover", icon: RectangleGroupIcon },
+  { href: "/topics", label: "Topics", icon: SparklesIcon },
+  { href: "/watchlist", label: "Watchlist", icon: CircleStackIcon },
   { href: "/repositories", label: "Repositories", icon: CircleStackIcon },
   { href: "/scout", label: "Scout", icon: SparklesIcon },
   { href: "/compare", label: "Compare", icon: ArrowsRightLeftIcon },

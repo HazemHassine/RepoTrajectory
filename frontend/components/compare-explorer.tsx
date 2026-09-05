@@ -1,440 +1,72 @@
 "use client";
+import { useState } from "react";
+import { api, type CatalogRepo } from "@/lib/api";
+import { productApi, type Comparison, type Constraints } from "@/lib/product-api";
+import { FactValue, SourceAnchor } from "./project-brief";
+import { WatchButton } from "./watch-button";
 
-import {
-  ArrowPathIcon,
-  ArrowsRightLeftIcon,
-  LinkIcon,
-} from "@heroicons/react/20/solid";
-import { motion } from "motion/react";
-import React, { useEffect, useMemo, useState } from "react";
-
-import { ComparisonActivityChart } from "@/components/charts";
-import { Combobox } from "@/components/combobox";
-import { ScoreBar, StatusBadge } from "@/components/ui";
-import { API, type Activity, type Metric, type Repo } from "@/lib/api";
-import {
-  assessment,
-  compact,
-  duration,
-  getNumber,
-  percent,
-} from "@/lib/format";
-
-type ComparisonData = { metric: Metric; activity: Activity[] };
-
-async function loadComparison(repository: string): Promise<ComparisonData> {
-  const [owner, name] = repository.split("/");
-  const [metricsResponse, activityResponse] = await Promise.all([
-    fetch(`${API}/api/v1/repositories/${owner}/${name}/metrics`),
-    fetch(`${API}/api/v1/repositories/${owner}/${name}/activity?weeks=12`),
-  ]);
-  if (!metricsResponse.ok || !activityResponse.ok) {
-    throw new Error(`Could not load analytics for ${repository}`);
-  }
-  return {
-    metric: await metricsResponse.json(),
-    activity: await activityResponse.json(),
-  };
-}
-
-export function CompareExplorer({
-  repositories,
-  initialA,
-  initialB,
-}: {
-  repositories: Repo[];
-  initialA?: string;
-  initialB?: string;
+export function CompareExplorer({ repositories, initialA, initialB }: {
+  repositories: CatalogRepo[]; initialA?: string; initialB?: string;
 }) {
-  const valid = (value: string | undefined, fallback: string) =>
-    repositories.some((repo) => repo.full_name === value) ? value! : fallback;
-
-  const [first, setFirst] = useState(
-    valid(initialA, repositories[0]?.full_name ?? "")
-  );
-  const [second, setSecond] = useState(
-    valid(initialB, repositories[1]?.full_name ?? "")
-  );
-  const [data, setData] = useState<Record<string, ComparisonData>>({});
-  const [error, setError] = useState("");
+  const [first, setFirst] = useState(initialA ?? repositories[0]?.full_name ?? "");
+  const [second, setSecond] = useState(initialB ?? repositories[1]?.full_name ?? "");
+  const [constraints, setConstraints] = useState<Constraints>({ context: "" });
+  const [result, setResult] = useState<Comparison | null>(null);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!first || !second || first === second) return;
-    let active = true;
-    setLoading(true);
-    setError("");
-    window.history.replaceState(
-      null,
-      "",
-      `/compare?a=${encodeURIComponent(first)}&b=${encodeURIComponent(second)}`
-    );
-    Promise.all([loadComparison(first), loadComparison(second)])
-      .then(([left, right]) => {
-        if (active) setData({ [first]: left, [second]: right });
-      })
-      .catch((reason: Error) => {
-        if (active) setError(reason.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [first, second]);
-
-  if (repositories.length < 2) {
-    return (
-      <div className="panel p-8 text-center text-sm text-[#9a9a9a]">
-        Ingest at least two repositories to enable comparison.
-      </div>
-    );
-  }
-
-  const left = data[first]?.metric;
-  const right = data[second]?.metric;
-  const copyLink = () => navigator.clipboard.writeText(window.location.href);
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
-    >
-      <section className="panel p-5">
-        <div className="grid items-end gap-3 md:grid-cols-[1fr_auto_1fr_auto]">
-          <RepositorySelect
-            label="Repository A"
-            value={first}
-            onChange={setFirst}
-            repositories={repositories}
-          />
-          <button
-            onClick={() => {
-              setFirst(second);
-              setSecond(first);
-            }}
-            className="button-secondary !h-10 !w-10 !px-0"
-            title="Swap repositories"
-          >
-            <ArrowsRightLeftIcon className="size-4" />
-          </button>
-          <RepositorySelect
-            label="Repository B"
-            value={second}
-            onChange={setSecond}
-            repositories={repositories}
-          />
-          <button onClick={copyLink} className="button-secondary !h-10">
-            <LinkIcon className="size-4" />
-            <span>Copy Link</span>
-          </button>
+  const [error, setError] = useState("");
+  return <div className="space-y-6">
+    <form className="panel space-y-4 p-5" onChange={() => setResult(null)} onSubmit={async event => {
+      event.preventDefault(); setLoading(true); setError(""); setResult(null);
+      try {
+        const profiles = await Promise.all([first, second].map(name => {
+          const [owner, repo] = name.trim().split("/");
+          if (!owner || !repo) throw new Error("Use owner/repository for both projects.");
+          return api.v2.repository(owner, repo);
+        }));
+        setResult(await productApi.compare(profiles.map(p => p.catalog.github_id), constraints));
+      } catch (error) { setError(error instanceof Error ? error.message : "Comparison unavailable."); }
+      finally { setLoading(false); }
+    }}>
+      <fieldset disabled={loading} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {[[first, setFirst, "First project"], [second, setSecond, "Alternative"]] .map(([value, setter, label]) => <label className="text-sm" key={String(label)}>{String(label)}
+            <input required list="catalog-projects" className="input mt-1 w-full bg-[#111]" value={String(value)}
+              onChange={e => (setter as (value: string) => void)(e.target.value)} placeholder="owner/repository" />
+          </label>)}
         </div>
-
-        {first === second && (
-          <p className="mt-4 rounded-md bg-[#141414] p-3 font-mono text-xs text-[#ffffff]">
-            Please choose two different repositories to compare.
-          </p>
-        )}
-        {loading && (
-          <p className="mt-4 inline-flex items-center gap-2 font-mono text-xs text-[#9a9a9a]">
-            <ArrowPathIcon className="size-3.5 animate-spin text-[#ccf200]" />
-            Loading repository evidence…
-          </p>
-        )}
-        {error && (
-          <p className="mt-4 rounded-md bg-[#1f1717] p-3 font-mono text-xs text-rose-400">
-            {error}
-          </p>
-        )}
-      </section>
-
-      {left && right && first !== second && (
-        <>
-          <section className="grid gap-4 lg:grid-cols-2">
-            <Summary repository={first} metric={left} opponent={right} />
-            <Summary repository={second} metric={right} opponent={left} />
-          </section>
-
-          <section className="panel overflow-hidden">
-            <div className="grid grid-cols-[1.4fr_1fr_1fr] border-b border-[#222222] bg-[#090909] px-5 py-3.5 text-xs font-semibold text-[#ffffff]">
-              <span>Measure</span>
-              <span className="font-mono text-xs">{first}</span>
-              <span className="font-mono text-xs">{second}</span>
-            </div>
-            <Group title="Strategic signals" />
-            <ComparisonRow
-              label="Momentum score"
-              left={left.momentum_score}
-              right={right.momentum_score}
-              format="score"
-              higher
-            />
-            <ComparisonRow
-              label="Community health"
-              left={left.health_score}
-              right={right.health_score}
-              format="score"
-              higher
-            />
-            <ComparisonRow
-              label="Contribution resilience"
-              left={100 - (left.bus_factor_risk ?? 100)}
-              right={100 - (right.bus_factor_risk ?? 100)}
-              format="score"
-              higher
-            />
-
-            <Group title="Delivery" />
-            <ComparisonRow
-              label="Human commits"
-              left={getNumber(left, "velocity", "commits")}
-              right={getNumber(right, "velocity", "commits")}
-              higher
-            />
-            <ComparisonRow
-              label="Commit change"
-              left={getNumber(left, "velocity", "commit_change")}
-              right={getNumber(right, "velocity", "commit_change")}
-              format="percent"
-              higher
-            />
-            <ComparisonRow
-              label="Pull requests opened"
-              left={getNumber(left, "velocity", "pull_requests")}
-              right={getNumber(right, "velocity", "pull_requests")}
-              higher
-            />
-            <ComparisonRow
-              label="Pull requests merged"
-              left={getNumber(left, "velocity", "merged_pull_requests")}
-              right={getNumber(right, "velocity", "merged_pull_requests")}
-              higher
-            />
-            <ComparisonRow
-              label="Median PR merge cycle"
-              left={getNumber(left, "responsiveness", "median_pr_merge_hours")}
-              right={getNumber(right, "responsiveness", "median_pr_merge_hours")}
-              format="duration"
-            />
-            <ComparisonRow
-              label="Issue net flow (closed − opened)"
-              left={getNumber(left, "velocity", "net_issue_flow")}
-              right={getNumber(right, "velocity", "net_issue_flow")}
-              higher
-            />
-
-            <Group title="Community & evidence" />
-            <ComparisonRow
-              label="Active human contributors"
-              left={getNumber(left, "community", "active_contributors")}
-              right={getNumber(right, "community", "active_contributors")}
-              higher
-            />
-            <ComparisonRow
-              label="Effective contributors (1 / HHI)"
-              left={getNumber(left, "concentration", "effective_contributors")}
-              right={getNumber(right, "concentration", "effective_contributors")}
-              higher
-            />
-            <ComparisonRow
-              label="Top contributor share"
-              left={getNumber(left, "concentration", "top_1_share")}
-              right={getNumber(right, "concentration", "top_1_share")}
-              format="percent"
-            />
-            <ComparisonRow
-              label="Automation share"
-              left={getNumber(left, "velocity", "automation_share")}
-              right={getNumber(right, "velocity", "automation_share")}
-              format="percent"
-            />
-            <ComparisonRow
-              label="Evidence confidence"
-              left={getNumber(left, "data_quality", "confidence_score")}
-              right={getNumber(right, "data_quality", "confidence_score")}
-              format="score"
-              higher
-            />
-          </section>
-
-          <section className="panel p-5">
-            <h2 className="section-title">Human commit activity</h2>
-            <p className="mb-5 mt-1 font-mono text-xs text-[#9a9a9a]">
-              Aligned by UTC date across the last 12 weekly buckets.
-            </p>
-            <ComparisonActivityChart
-              leftName={first}
-              rightName={second}
-              left={data[first].activity}
-              right={data[second].activity}
-            />
-          </section>
-        </>
-      )}
-    </motion.div>
-  );
-}
-
-function RepositorySelect({
-  label,
-  value,
-  onChange,
-  repositories,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  repositories: Repo[];
-}) {
-  const options = useMemo(
-    () =>
-      repositories.map((repo) => ({
-        value: repo.full_name,
-        label: repo.full_name,
-        description: repo.primary_language
-          ? `${repo.primary_language} · ★ ${compact(repo.stars)}`
-          : `★ ${compact(repo.stars)}`,
-      })),
-    [repositories]
-  );
-
-  return (
-    <div className="w-full">
-      <Combobox
-        label={label}
-        value={value}
-        onChange={onChange}
-        options={options}
-        placeholder="Type or select repository…"
-        searchPlaceholder="Filter repositories by name or tech…"
-        allowCustomValue={true}
-      />
-    </div>
-  );
-}
-
-function Summary({
-  repository,
-  metric,
-  opponent,
-}: {
-  repository: string;
-  metric: Metric;
-  opponent: Metric;
-}) {
-  const state = assessment(metric);
-  const advantages = [
-    {
-      label: "Momentum",
-      value: metric.momentum_score ?? 0,
-      other: opponent.momentum_score ?? 0,
-    },
-    {
-      label: "Health",
-      value: metric.health_score ?? 0,
-      other: opponent.health_score ?? 0,
-    },
-    {
-      label: "Resilience",
-      value: 100 - (metric.bus_factor_risk ?? 100),
-      other: 100 - (opponent.bus_factor_risk ?? 100),
-    },
-  ]
-    .filter((item) => item.value - item.other >= 5)
-    .map((item) => item.label);
-
-  return (
-    <article className="panel p-5">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="font-mono text-sm font-semibold">{repository}</h2>
-        <StatusBadge status={state.status} tone={state.tone} />
-      </div>
-      <div className="mt-5 grid grid-cols-3 gap-4">
-        <MiniScore label="Momentum" value={metric.momentum_score} />
-        <MiniScore label="Health" value={metric.health_score} />
-        <MiniScore
-          label="Resilience"
-          value={100 - (metric.bus_factor_risk ?? 100)}
-        />
-      </div>
-      <p className="mt-5 border-t border-[#222222] pt-3 font-mono text-xs text-[#9a9a9a]">
-        {advantages.length
-          ? `Material advantage in ${advantages.join(" and ").toLowerCase()}.`
-          : "No material composite-score advantage; inspect the operating measures below."}
-      </p>
-    </article>
-  );
-}
-
-function MiniScore({
-  label,
-  value,
-}: {
-  label: string;
-  value: number | null;
-}) {
-  return (
-    <div>
-      <p className="font-mono text-[10px] uppercase text-[#9a9a9a]">{label}</p>
-      <div className="mt-2">
-        <ScoreBar compact value={value} />
-      </div>
-    </div>
-  );
-}
-
-function Group({ title }: { title: string }) {
-  return (
-    <div className="border-b border-[#222222] bg-[#111111] px-5 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-[#9a9a9a]">
-      {title}
-    </div>
-  );
-}
-
-function ComparisonRow({
-  label,
-  left,
-  right,
-  format = "number",
-  higher = false,
-}: {
-  label: string;
-  left: number | null;
-  right: number | null;
-  format?: "number" | "score" | "percent" | "duration";
-  higher?: boolean;
-}) {
-  const difference =
-    left != null && right != null ? Math.abs(left - right) : 0;
-  const material =
-    format === "percent" ? difference >= 0.05 : difference >= 5;
-  const leftWins =
-    material && left != null && right != null && (higher ? left > right : left < right);
-  const rightWins =
-    material && left != null && right != null && (higher ? right > left : right < left);
-
-  const display = (value: number | null) =>
-    format === "percent"
-      ? percent(value, true)
-      : format === "duration"
-      ? duration(value)
-      : format === "score"
-      ? value == null
-        ? "—"
-        : Math.round(value).toString()
-      : compact(value);
-
-  return (
-    <div className="grid grid-cols-[1.4fr_1fr_1fr] items-center border-b border-[#222222] px-5 py-3 text-xs last:border-0 hover:bg-[#141414]/40">
-      <span className="text-[#9a9a9a]">{label}</span>
-      <b className={`font-mono ${leftWins ? "text-[#ccf200]" : "text-[#ffffff]"}`}>
-        {display(left)}
-      </b>
-      <b className={`font-mono ${rightWins ? "text-[#ccf200]" : "text-[#ffffff]"}`}>
-        {display(right)}
-      </b>
-    </div>
-  );
+        <datalist id="catalog-projects">{repositories.map(repo => <option key={repo.github_id} value={repo.full_name} />)}</datalist>
+        <label className="block text-sm">What are you building?
+          <textarea className="input mt-1 w-full bg-[#111]" maxLength={2000} rows={3} value={constraints.context}
+            onChange={e => setConstraints({ ...constraints, context: e.target.value })}
+            placeholder="A small Python application; I want to keep hosting simple…" />
+        </label>
+        <p className="text-xs text-[#9a9a9a]">Use the fields below to evaluate recorded facts. Free-text context is not automatically interpreted.</p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <label className="text-sm">Primary language<input className="input mt-1 w-full bg-[#111]" maxLength={100} value={constraints.language ?? ""} onChange={e => setConstraints({ ...constraints, language: e.target.value || undefined })} placeholder="Python" /></label>
+          <label className="text-sm">License identifier<input className="input mt-1 w-full bg-[#111]" maxLength={100} value={constraints.license ?? ""} onChange={e => setConstraints({ ...constraints, license: e.target.value || undefined })} placeholder="Apache-2.0" /></label>
+          <label className="text-sm">Package ecosystem<select className="input mt-1 w-full bg-[#111]" value={constraints.package_ecosystem ?? ""} onChange={e => setConstraints({ ...constraints, package_ecosystem: e.target.value as Constraints["package_ecosystem"] || undefined })}><option value="">Any / unknown</option><option value="npm">npm</option><option value="pypi">PyPI</option></select></label>
+          <label className="text-sm">Repository push within days<input type="number" min={1} max={730} className="input mt-1 w-full bg-[#111]" value={constraints.activity_within_days ?? ""} onChange={e => setConstraints({ ...constraints, activity_within_days: e.target.value ? Number(e.target.value) : undefined })} /></label>
+          <label className="text-sm">Deployment preference<select className="input mt-1 w-full bg-[#111]" value={constraints.deployment ?? ""} onChange={e => setConstraints({ ...constraints, deployment: e.target.value as Constraints["deployment"] || undefined })}><option value="">Unspecified</option><option value="self-hosted">Self-hosted</option><option value="saas-acceptable">SaaS acceptable</option></select></label>
+        </div>
+        <button className="button-primary" type="submit">{loading ? "Comparing evidence…" : "Compare for my situation"}</button>
+      </fieldset>
+    </form>
+    {error && <p role="alert" className="panel p-4 text-amber-300">{error}</p>}
+    {!result && !loading && !error && <p className="text-sm text-[#9a9a9a]">Choose two projects and compare. Missing evidence stays visible; there is no automatic winner.</p>}
+    {result && <>
+      <p className="text-sm text-[#9a9a9a]">{result.limitation} No AI recommendation was generated.</p>
+      {result.constraints.context && <p className="panel p-4">My situation: {result.constraints.context}</p>}
+      <div className="grid gap-5 lg:grid-cols-2">{result.projects.map(project => <article className="panel space-y-5 p-5" key={project.brief.github_id}>
+        <h2 className="text-xl font-bold">{project.brief.full_name}</h2>
+        <FactValue fact={project.brief.description} />
+        <div className="space-y-3">{project.fit.map(fit => <div key={fit.constraint} className="border-l border-[#444] pl-3">
+          <p className="font-semibold">{fit.constraint}: {fit.status}</p><p className="text-sm text-[#bbb]">{fit.explanation}</p>
+          {fit.source_url && <SourceAnchor url={fit.source_url}>Evidence</SourceAnchor>}
+        </div>)}</div>
+        {project.brief.facts.map((fact, i) => <FactValue fact={fact} key={i} />)}
+        <details><summary className="cursor-pointer text-[#ccf200]">Missing information & source limitations</summary><ul className="mt-3 space-y-2 text-sm">{project.brief.missing.map((item, i) => <li key={i}>{item}</li>)}</ul></details>
+        <WatchButton githubId={project.brief.github_id} fullName={project.brief.full_name} />
+      </article>)}</div>
+    </>}
+  </div>;
 }

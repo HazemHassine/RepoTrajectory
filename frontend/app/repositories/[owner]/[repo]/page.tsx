@@ -9,6 +9,8 @@ import {
   SparklesIcon,
 } from "@heroicons/react/20/solid";
 import Link from "next/link";
+import { ProjectBrief } from "@/components/project-brief";
+import { productApi, type Brief } from "@/lib/product-api";
 
 import { ActivityChart, StarChart } from "@/components/charts";
 import {
@@ -41,6 +43,8 @@ export default async function RepositoryPage({
   const window = [30, 90, 365].includes(requested) ? requested : 30;
 
   let profile: UnifiedProfile | null = null;
+  let brief: Brief | null = null;
+  try { brief = await productApi.brief(owner, repo); } catch { /* Visible degraded state below. */ }
   let activity: Activity[] = [];
   let history: History[] = [];
   let v1Repo: Repo | null = null;
@@ -96,18 +100,18 @@ export default async function RepositoryPage({
   const isDeep = profile?.catalog.is_deep || !!v1Repo;
   const topics: string[] = profile?.catalog.topics ?? [];
   const classification = profile?.catalog.classification ?? "General Software";
-  const classificationConfidence = profile?.catalog.classification_confidence ?? 0.85;
+  const classificationConfidence = profile?.catalog.classification_confidence;
 
   const scout = profile?.scout;
   const deepEvidence = profile?.deep_evidence;
   const metric: Metric | undefined = (deepEvidence?.metric ?? v1Metric) || undefined;
 
   // Metric derivations
-  const momentumScore = metric?.momentum_score ?? (scout?.promise_score ? Math.round(scout.promise_score * 0.9) : null);
-  const healthScore = metric?.health_score ?? 70;
-  const busFactorRisk = metric?.bus_factor_risk ?? 45;
-  const confidenceScore = getNumber(metric, "data_quality", "confidence_score") ?? (scout?.confidence ? Math.round(scout.confidence * 100) : 65);
-  const commitCount = getNumber(metric, "velocity", "commits") ?? 0;
+  const momentumScore = metric?.momentum_score ?? null;
+  const healthScore = metric?.health_score ?? null;
+  const busFactorRisk = metric?.bus_factor_risk ?? null;
+  const confidenceScore = getNumber(metric, "data_quality", "confidence_score");
+  const commitCount = getNumber(metric, "velocity", "commits");
   const commitChange = getNumber(metric, "velocity", "commit_change");
   const automationShare = getNumber(metric, "velocity", "automation_share");
   const topContributorShare = getNumber(metric, "concentration", "top_1_share");
@@ -185,6 +189,9 @@ export default async function RepositoryPage({
 
       {/* 5-Section Layout */}
       <div className="mx-auto max-w-[1440px] space-y-8 px-5 py-8 md:px-8 xl:px-10">
+        {brief ? <ProjectBrief brief={brief} /> : <p role="alert" className="panel p-5">Project brief unavailable. Collected analytics are available below; reload to retry.</p>}
+        <details className="space-y-8">
+          <summary className="cursor-pointer text-xl font-semibold">Advanced repository analytics & methodology</summary>
         {/* ============================================================ */}
         {/* SECTION 1: OVERVIEW & PROJECT PURPOSE */}
         {/* ============================================================ */}
@@ -219,7 +226,7 @@ export default async function RepositoryPage({
                     {classification}
                   </span>
                   <span className="font-mono text-[9px] text-[#646464]">
-                    ({Math.round(classificationConfidence * 100)}% confidence)
+                    ({classificationConfidence == null ? "Unknown" : `${Math.round(classificationConfidence * 100)}% heuristic confidence`})
                   </span>
                 </div>
 
@@ -340,7 +347,7 @@ export default async function RepositoryPage({
             <div className="panel p-4">
               <p className="data-label">Commit Cadence</p>
               <p className="mt-2 font-mono text-sm font-bold text-[#ffffff]">
-                {commitCount > 20 ? "High Frequency" : commitCount > 0 ? "Moderate" : "Low / Baseline"}
+                {commitCount == null ? "Unknown" : commitCount > 20 ? "High Frequency" : commitCount > 0 ? "Moderate" : "No commits observed"}
               </p>
               <p className="mt-1 font-mono text-[10px] text-[#646464]">Within active observation window</p>
             </div>
@@ -373,7 +380,7 @@ export default async function RepositoryPage({
               <div className="mt-4">
                 <ScoreBar
                   value={busFactorRisk}
-                  tone={busFactorRisk >= 70 ? "red" : busFactorRisk >= 40 ? "amber" : "blue"}
+                  tone={busFactorRisk != null && busFactorRisk >= 70 ? "red" : busFactorRisk != null && busFactorRisk >= 40 ? "amber" : "blue"}
                 />
               </div>
               <p className="mt-3 text-xs leading-5 text-[#9a9a9a]">
@@ -461,7 +468,7 @@ export default async function RepositoryPage({
                   <div className="mt-3 flex gap-4 font-mono text-[10px] text-[#9a9a9a]">
                     <span>Quant: {scout.quantitative_score?.toFixed(1) ?? "—"}</span>
                     <span>AI: {scout.ai_score?.toFixed(1) ?? "—"}</span>
-                    <span>Confidence: {Math.round(scout.confidence * 100)}%</span>
+                    <span>Evidence coverage: {scout.confidence == null ? "Unknown" : `${Math.round(scout.confidence * 100)}%`}</span>
                   </div>
                 </div>
               )}
@@ -528,8 +535,8 @@ export default async function RepositoryPage({
             {/* Provenance Details */}
             <div className="grid divide-y divide-[#222222] sm:grid-cols-4 sm:divide-x sm:divide-y-0 p-5 font-mono">
               <div>
-                <span className="data-label block">Evaluation Confidence</span>
-                <b className="mt-2 block text-xl text-[#ccf200]">{confidenceScore}%</b>
+                <span className="data-label block">Evidence coverage</span>
+                <b className="mt-2 block text-xl text-[#ccf200]">{confidenceScore == null ? "Unknown" : `${confidenceScore}%`}</b>
               </div>
               <div className="sm:pl-5">
                 <span className="data-label block">Ingestion Source</span>
@@ -538,7 +545,7 @@ export default async function RepositoryPage({
               <div className="sm:pl-5">
                 <span className="data-label block">Historical Snapshots</span>
                 <b className="mt-2 block text-xl text-[#ffffff]">
-                  {history.length || (deepEvidence?.snapshot_history?.length ?? 1)}
+                  {history.length || (deepEvidence?.snapshot_history?.length ?? "Unknown")}
                 </b>
               </div>
               <div className="sm:pl-5">
@@ -559,7 +566,7 @@ export default async function RepositoryPage({
                   </strong>
                 </span>
                 <span>
-                  Search Vector Embedding: <strong className="text-[#ffffff]">pgvector-1536d-cosine</strong>
+                  Search capability: <strong className="text-[#ffffff]">See search result retrieval status</strong>
                 </span>
               </div>
               <p className="mt-3">
@@ -571,6 +578,7 @@ export default async function RepositoryPage({
             </div>
           </div>
         </section>
+        </details>
       </div>
     </main>
   );

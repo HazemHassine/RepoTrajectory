@@ -7,6 +7,7 @@ from fastapi.responses import Response
 
 from app.api.admin import router as admin_router
 from app.api.routes import router
+from app.api.v2.product_routes import router as product_router
 from app.api.v2.routes import router as v2_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
@@ -38,6 +39,7 @@ app.add_middleware(
 app.include_router(router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.include_router(v2_router, prefix="/api/v2")
+app.include_router(product_router, prefix="/api/v2")
 
 
 @app.middleware("http")

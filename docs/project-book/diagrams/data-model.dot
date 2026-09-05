@@ -1,0 +1,22 @@
+digraph G {
+  graph [bgcolor="transparent", rankdir=LR, pad=.12, nodesep=.28, ranksep=.55];
+  node [shape=record, style="filled", fontname="Arial", fontsize=8.4, color="#384152", fillcolor="#151922", fontcolor="#f4f7fb", margin=".08,.05"];
+  edge [color="#75869a", arrowsize=.55];
+  candidate [label="{repository_candidates|github_id • full_name|classification • trend • tier}"];
+  collection [label="{collections|policy bounds|refresh cadence}"];
+  membership [label="{collection_memberships|rank • selected • score}"];
+  job [label="{ingestion_jobs|type • status • lease|dedupe • attempts}"];
+  ext [label="{external_repository_activity|candidate + hour|event counters}"];
+  repo [label="{repositories|canonical hydrated identity|current GitHub metadata}", fillcolor="#27301c", color="#a6d800"];
+  entities [label="{deep evidence|commits • issues • PRs|releases • contributors}"];
+  snapshots [label="{repository_snapshots|one observation / UTC day}"];
+  metrics [label="{metric_snapshots|scores • components|window • evidence}"];
+  catalog [label="{catalog_repositories|canonical directory/scout row|selection • promise • tier}", fillcolor="#27301c", color="#a6d800"];
+  search [label="{repository_search_documents|lexical content}"];
+  vector [label="{repository_embeddings|model • version • vector(1536)}"];
+  scout [label="{scout_assessments|quantitative + AI/fallback|rationale • confidence}"];
+  prov [label="{repository_provenance|field • source • observed_at}"];
+  collection -> membership; candidate -> membership; candidate -> job; candidate -> ext; candidate -> repo [style=dashed];
+  repo -> entities; repo -> snapshots; repo -> metrics; repo -> catalog [style=dashed];
+  catalog -> search; catalog -> vector; catalog -> scout; catalog -> prov;
+}

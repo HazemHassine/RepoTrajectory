@@ -1,8 +1,7 @@
 from datetime import UTC, datetime
-from typing import Any
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -97,7 +96,7 @@ async def sync_catalog_from_repository(
                 "is_deep": True,
                 "tier": "deep",
                 "repository_id": repo.id,
-                "readme_excerpt": readme_excerpt,
+                **({"readme_excerpt": readme_excerpt} if readme_text else {}),
                 "last_observed_at": now,
             },
         )
@@ -131,7 +130,7 @@ async def sync_catalog_from_repository(
                 "topics_text": " ".join(topics),
                 "primary_language": repo.primary_language,
                 "license": repo.license,
-                "readme_text": readme_bounded,
+                **({"readme_text": readme_bounded} if readme_text else {}),
                 "updated_at": now,
             },
         )
@@ -201,7 +200,10 @@ async def generate_catalog_embeddings(
                 updated_at=now,
             )
             .on_conflict_do_update(
-                index_elements=[RepositoryEmbedding.github_id, RepositoryEmbedding.embedding_version],
+                index_elements=[
+                    RepositoryEmbedding.github_id,
+                    RepositoryEmbedding.embedding_version,
+                ],
                 set_={
                     "model": model,
                     "embedding": vec,

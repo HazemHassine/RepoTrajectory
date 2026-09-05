@@ -1,0 +1,27 @@
+digraph G {
+  graph [bgcolor="transparent", rankdir=LR, pad=.2, nodesep=.45, ranksep=.65];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=10, color="#384152", fillcolor="#151922", fontcolor="#f4f7fb", margin=".16,.10"];
+  edge [color="#8ea0b5", fontcolor="#aebdcb", fontname="Arial", fontsize=8.5, arrowsize=.65];
+  browser [label="Browser\nlocalhost:10100", fillcolor="#1d2430"];
+  subgraph cluster_docker {
+    label="Docker Compose / internal network"; color="#313a48"; fontcolor="#9eabb9"; fontname="Arial"; style="rounded,dashed";
+    caddy [label="Caddy proxy\nonly published service", fillcolor="#203020"];
+    web [label="Next.js 15\nweb :3000"];
+    api [label="FastAPI\napi :8000"];
+    worker [label="Collector\nscheduler + worker"];
+    pg [label="PostgreSQL 16\n+ pgvector", shape=cylinder, fillcolor="#171f2a"];
+    redis [label="Redis 7\nreserved cache/service", shape=cylinder, fillcolor="#171f2a"];
+    volumes [label="postgres_data\nredis_data\nbackups_data", shape=folder, fillcolor="#171f2a"];
+    caddy -> web [label="/*"];
+    caddy -> api [label="/backend/*"];
+    api -> pg; worker -> pg; api -> redis; worker -> redis;
+    pg -> volumes [dir=both]; redis -> volumes [dir=both];
+  }
+  browser -> caddy;
+  worker -> github [label="HTTPS GET"];
+  worker -> gha [label="stream gzip"];
+  api -> ai [label="optional"];
+  github [label="GitHub", fillcolor="#221d30"];
+  gha [label="GH Archive", fillcolor="#221d30"];
+  ai [label="AI API", fillcolor="#221d30"];
+}

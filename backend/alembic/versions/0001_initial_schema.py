@@ -4,9 +4,9 @@ Revision ID: 0001
 """
 
 from collections.abc import Sequence
+from pathlib import Path
 
 from alembic import op
-from app.db.models import Base
 
 revision: str = "0001"
 down_revision: str | None = None
@@ -15,10 +15,17 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    Base.metadata.create_all(bind=bind)
+    # Frozen initial schema: importing live ORM metadata breaks fresh migration chains.
+    schema = Path(__file__).with_name("0001_schema.sql").read_text()
+    for statement in schema.split(";"):
+        if statement.strip():
+            op.execute(statement)
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-    Base.metadata.drop_all(bind=bind)
+    for table in (
+        "metric_snapshots", "repository_topics", "repository_languages", "releases",
+        "issues", "pull_requests", "commits", "repository_contributors",
+        "repository_snapshots", "contributors", "repositories",
+    ):
+        op.drop_table(table)

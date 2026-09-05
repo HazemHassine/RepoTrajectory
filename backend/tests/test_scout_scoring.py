@@ -1,12 +1,14 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from datetime import datetime, timezone, timedelta
-from app.db.models import CatalogRepository, RepositoryCandidate, ExternalRepositoryActivity
-from app.services.scout import (
-    is_scout_eligible,
-    calculate_quantitative_scout_score,
-    evaluate_candidate_scout
-)
+
+from app.db.models import CatalogRepository, ExternalRepositoryActivity, RepositoryCandidate
 from app.services.ai.fallback_provider import FallbackAIProvider
+from app.services.scout import (
+    evaluate_candidate_scout,
+    is_scout_eligible,
+)
+
 
 @pytest.mark.asyncio
 async def test_low_star_repo_promise_evaluation(db_session):
@@ -14,8 +16,8 @@ async def test_low_star_repo_promise_evaluation(db_session):
     Test that a 6-star repository with strong commit cadence and recent releases
     is eligible for Scout evaluation and scores >= 60.
     """
-    now = datetime.now(timezone.utc)
-    
+    now = datetime.now(UTC)
+
     # 6-star repo with active signals
     repo = CatalogRepository(
         github_id=60001,
@@ -36,23 +38,39 @@ async def test_low_star_repo_promise_evaluation(db_session):
         is_fork=False,
         archived=False,
         classification="developer_tool",
-        topics=["compiler", "wasm", "rust", "optimizer"]
+        topics=["compiler", "wasm", "rust", "optimizer"],
     )
     db_session.add(repo)
-    
+
     candidate = RepositoryCandidate(
-        id=42, github_id=repo.github_id, owner=repo.owner, name=repo.name,
-        full_name=repo.full_name, source="gharchive", discovered_at=now, last_seen_at=now,
+        id=42,
+        github_id=repo.github_id,
+        owner=repo.owner,
+        name=repo.name,
+        full_name=repo.full_name,
+        source="gharchive",
+        discovered_at=now,
+        last_seen_at=now,
     )
     unrelated = RepositoryCandidate(
-        id=repo.github_id, github_id=999999, owner="other", name="project",
-        full_name="other/project", source="gharchive", discovered_at=now, last_seen_at=now,
+        id=repo.github_id,
+        github_id=999999,
+        owner="other",
+        name="project",
+        full_name="other/project",
+        source="gharchive",
+        discovered_at=now,
+        last_seen_at=now,
     )
     db_session.add_all([candidate, unrelated])
     await db_session.flush()
-    db_session.add(ExternalRepositoryActivity(
-        candidate_id=unrelated.id, period_start=now, star_events=999,
-    ))
+    db_session.add(
+        ExternalRepositoryActivity(
+            candidate_id=unrelated.id,
+            period_start=now,
+            star_events=999,
+        )
+    )
     # Candidate identity deliberately differs from the stable external GitHub ID.
     activity = ExternalRepositoryActivity(
         candidate_id=candidate.id,
@@ -62,17 +80,15 @@ async def test_low_star_repo_promise_evaluation(db_session):
         pull_request_events=12,
         issue_events=5,
         star_events=6,
-        fork_events=2
+        fork_events=2,
     )
     db_session.add(activity)
     await db_session.commit()
-    
+
     assessment = await evaluate_candidate_scout(
-        db_session,
-        repo=repo,
-        ai_provider=FallbackAIProvider()
+        db_session, repo=repo, ai_provider=FallbackAIProvider()
     )
-    
+
     assert assessment is not None
     assert assessment.evidence_references["recent_events"]["star_events"] == 6
     assert assessment.evidence_references["recent_events"]["push_events"] == 50
@@ -82,13 +98,14 @@ async def test_low_star_repo_promise_evaluation(db_session):
     assert assessment.why_it_surfaced != ""
     assert repo.promise_score == assessment.promise_score
 
+
 @pytest.mark.asyncio
 async def test_guardrails_exclude_forks_and_archived():
     """
     Test that forks and archived repositories are strictly rejected by the Scout guardrails.
     """
-    now = datetime.now(timezone.utc)
-    
+    now = datetime.now(UTC)
+
     # Fork repo
     fork_repo = CatalogRepository(
         github_id=70001,
@@ -104,13 +121,13 @@ async def test_guardrails_exclude_forks_and_archived():
         last_discovered_at=now,
         last_observed_at=now,
         is_fork=True,
-        archived=False
+        archived=False,
     )
-    
+
     eligible, reason = is_scout_eligible(fork_repo)
     assert eligible is False
     assert "fork" in (reason or "").lower()
-    
+
     # Archived repo
     archived_repo = CatalogRepository(
         github_id=70002,
@@ -126,20 +143,21 @@ async def test_guardrails_exclude_forks_and_archived():
         last_discovered_at=now,
         last_observed_at=now,
         is_fork=False,
-        archived=True
+        archived=True,
     )
-    
+
     eligible2, reason2 = is_scout_eligible(archived_repo)
     assert eligible2 is False
     assert "archived" in (reason2 or "").lower()
+
 
 @pytest.mark.asyncio
 async def test_confidence_downranking():
     """
     Test that sparse signals or stale repositories produce lower confidence.
     """
-    now = datetime.now(timezone.utc)
-    
+    now = datetime.now(UTC)
+
     sparse_repo = CatalogRepository(
         github_id=70003,
         owner="abandoned",
@@ -154,8 +172,8 @@ async def test_confidence_downranking():
         last_discovered_at=now,
         last_observed_at=now,
         is_fork=False,
-        archived=False
+        archived=False,
     )
-    
+
     eligible, reason = is_scout_eligible(sparse_repo)
     assert eligible is False or "pushed" in (reason or "").lower()

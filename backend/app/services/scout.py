@@ -1,22 +1,18 @@
-from datetime import UTC, datetime, timedelta
 import math
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import structlog
 from sqlalchemy import func, select, update
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.db.models import (
     CatalogRepository,
-    Commit,
     ExternalRepositoryActivity,
     Issue,
     PullRequest,
-    Release,
     RepositoryCandidate,
-    RepositorySnapshot,
     ScoutAssessment,
 )
 from app.services.ai import AIProvider, get_ai_provider
@@ -35,7 +31,11 @@ def is_scout_eligible(repo: CatalogRepository) -> tuple[bool, str | None]:
         return False, "Excluded: repository is a fork"
     if repo.archived:
         return False, "Excluded: repository is archived"
-    if repo.classification and repo.classification not in SOFTWARE_CLASSIFICATIONS and repo.classification != "unclassified":
+    if (
+        repo.classification
+        and repo.classification not in SOFTWARE_CLASSIFICATIONS
+        and repo.classification != "unclassified"
+    ):
         return False, f"Excluded: non-software classification ({repo.classification})"
     if repo.pushed_at:
         age_days = (datetime.now(UTC) - repo.pushed_at).total_seconds() / 86400
@@ -199,11 +199,16 @@ async def evaluate_candidate_scout(
                 func.sum(ExternalRepositoryActivity.star_events).label("star_events"),
                 func.sum(ExternalRepositoryActivity.fork_events).label("fork_events"),
                 func.sum(ExternalRepositoryActivity.push_events).label("push_events"),
-                func.sum(ExternalRepositoryActivity.pull_request_events).label("pull_request_events"),
+                func.sum(ExternalRepositoryActivity.pull_request_events).label(
+                    "pull_request_events"
+                ),
                 func.sum(ExternalRepositoryActivity.issue_events).label("issue_events"),
                 func.sum(ExternalRepositoryActivity.release_events).label("release_events"),
             )
-            .join(RepositoryCandidate, RepositoryCandidate.id == ExternalRepositoryActivity.candidate_id)
+            .join(
+                RepositoryCandidate,
+                RepositoryCandidate.id == ExternalRepositoryActivity.candidate_id,
+            )
             .where(
                 RepositoryCandidate.github_id == repo.github_id,
                 ExternalRepositoryActivity.period_start >= recent_cutoff,
@@ -238,7 +243,10 @@ async def evaluate_candidate_scout(
         merged_prs = await session.scalar(
             select(func.count())
             .select_from(PullRequest)
-            .where(PullRequest.repository_id == repo.repository_id, PullRequest.merged_at >= recent_cutoff)
+            .where(
+                PullRequest.repository_id == repo.repository_id,
+                PullRequest.merged_at >= recent_cutoff,
+            )
         )
         closed_issues = await session.scalar(
             select(func.count())
@@ -253,6 +261,7 @@ async def evaluate_candidate_scout(
 
     # 2. Structured AI Evaluation (30%)
     candidate_data = {
+        "source_url": f"https://github.com/{repo.full_name}",
         "full_name": repo.full_name,
         "description": repo.description,
         "primary_language": repo.primary_language,
@@ -264,6 +273,7 @@ async def evaluate_candidate_scout(
         "classification": repo.classification,
         "pushed_at": repo.pushed_at.isoformat() if repo.pushed_at else None,
         "default_branch": repo.default_branch,
+        "recent_events": facts,
     }
     ai_eval = await provider.evaluate_scout(candidate_data)
 
@@ -289,7 +299,12 @@ async def evaluate_candidate_scout(
         ai_score=ai_eval.overall_score,
         confidence=confidence,
         rationale=f"Quantitative: {quant_score}/100, AI: {ai_eval.overall_score}/100",
-        why_it_surfaced=ai_eval.why_it_surfaced,
+        why_it_surfaced=(
+            f"Observed {facts.get('total_events', 0)} compact GitHub public events "
+            "in the last 30 days. Inspect releases and documentation for changes that matter."
+            if ai_eval.model_identity.startswith("heuristic-") and facts.get("total_events")
+            else ai_eval.why_it_surfaced
+        ),
         supporting_facts=ai_eval.supporting_facts,
         uncertainty=ai_eval.uncertainty,
         risk_flags=ai_eval.risk_flags,

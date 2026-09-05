@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -57,10 +57,10 @@ class CursorPaginationEnvelope(BaseModel):
 
 
 class SearchRequest(BaseModel):
-    query: str
+    query: str = Field(min_length=1, max_length=500)
     filters: dict[str, Any] | None = None
     cursor: str | None = None
-    limit: int = 50
+    limit: int = Field(default=50, ge=1, le=100)
 
 
 class SearchItem(BaseModel):
@@ -95,7 +95,7 @@ class SearchResponse(BaseModel):
     interpreted_filters: dict[str, Any] = Field(default_factory=dict)
     result_rationale: str = ""
     evidence_freshness: str = ""
-    semantic_available: bool = True
+    semantic_available: bool = False
 
 
 class ScoutFeedItem(BaseModel):

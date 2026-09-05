@@ -65,9 +65,7 @@ class FallbackAIProvider(AIProvider):
             exec_qual += 10.0
         exec_qual = min(100.0, exec_qual)
 
-        overall = round(
-            0.25 * clarity + 0.35 * usefulness + 0.20 * diff + 0.20 * exec_qual, 1
-        )
+        overall = round(0.25 * clarity + 0.35 * usefulness + 0.20 * diff + 0.20 * exec_qual, 1)
 
         why = (
             f"Selected for investigation from {lang or 'language unknown'} repository metadata."

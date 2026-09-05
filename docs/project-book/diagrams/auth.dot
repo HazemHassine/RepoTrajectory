@@ -1,0 +1,17 @@
+digraph G {
+  graph [bgcolor="transparent", rankdir=LR, pad=.2, nodesep=.4, ranksep=.6];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=9.5, color="#384152", fillcolor="#151922", fontcolor="#f4f7fb", margin=".14,.09"];
+  edge [color="#8ea0b5", fontcolor="#aebdcb", fontname="Arial", fontsize=8, arrowsize=.6];
+  login [label="POST login\nusername + password"];
+  limit [label="rolling IP limiter\n5 failures / 15 min"];
+  verify [label="PBKDF2-HMAC-SHA256\n600k iterations"];
+  session [label="signed 8-hour session\nHttpOnly • SameSite=Strict"];
+  mutate [label="state-changing request"];
+  origin [label="Origin/Referer allowlist\n+ Fetch Metadata"];
+  csrf [label="session-bound CSRF\ncustom header"];
+  command [label="fixed command allowlist\nconditional DB mutation", fillcolor="#27301c", color="#a6d800"];
+  audit [label="append-only audit row", shape=cylinder, fillcolor="#171f2a"];
+  login -> limit -> verify -> session;
+  session -> mutate; mutate -> origin -> csrf -> command -> audit;
+  verify -> audit [label="success/rejection"];
+}

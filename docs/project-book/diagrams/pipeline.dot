@@ -1,0 +1,21 @@
+digraph G {
+  graph [bgcolor="transparent", rankdir=LR, pad=.15, nodesep=.35, ranksep=.55];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=9.5, color="#384152", fillcolor="#151922", fontcolor="#f4f7fb", margin=".14,.09"];
+  edge [color="#8ea0b5", fontcolor="#aebdcb", fontname="Arial", fontsize=8, arrowsize=.6];
+  search [label="GitHub Search\nsharded queries"];
+  gha [label="GH Archive\nhourly stream"];
+  fold [label="bounded event fold\n≤500 repos/hour"];
+  cand [label="candidate universe\ncheap metadata", shape=cylinder, fillcolor="#171f2a"];
+  cls [label="transparent\nclassification"];
+  rank [label="percentiles +\ntrend selection"];
+  queue [label="durable job queue", shape=cylinder, fillcolor="#171f2a"];
+  hydrate [label="bounded REST\nhydration"];
+  raw [label="normalized entities\n+ daily snapshots", shape=cylinder, fillcolor="#171f2a"];
+  metric [label="explainable\nmetrics"];
+  catalog [label="canonical catalog\nsearch docs + provenance", shape=cylinder, fillcolor="#171f2a"];
+  scout [label="Scout scoring\nAI or fallback"];
+  api [label="v1 + v2 API", fillcolor="#a6d800", fontcolor="#091000", color="#c9ff00"];
+  web [label="research console"];
+  search -> cand; gha -> fold -> cand; cand -> cls -> rank -> queue -> hydrate -> raw -> metric;
+  cand -> catalog; raw -> catalog; catalog -> scout; metric -> api; catalog -> api; scout -> api; api -> web;
+}

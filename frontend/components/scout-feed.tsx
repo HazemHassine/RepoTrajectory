@@ -15,6 +15,7 @@ import { Combobox } from "@/components/combobox";
 import { StatusBadge } from "@/components/ui";
 import type { Facets, ScoutFeedItem } from "@/lib/api";
 import { compact, relativeDate } from "@/lib/format";
+import { coverage } from "@/lib/watchlist";
 
 interface ScoutFeedProps {
   items: ScoutFeedItem[];
@@ -170,11 +171,11 @@ export function ScoutFeed({
                 {/* Why it surfaced */}
                 <div className="rounded-md border-l-2 border-[#ccf200] bg-[#090909] p-3.5">
                   <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-[#ccf200]">
-                    Evaluation Context
+                    Why investigate
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-[#ffffff]">
                     {item.why_it_surfaced ||
-                      "High velocity human commits and release cadence relative to community size."}
+                      "Insufficient evidence to explain this selection."}
                   </p>
                 </div>
 
@@ -236,7 +237,7 @@ export function ScoutFeed({
                 <div className="space-y-4">
                   <div className="panel border border-[#222222] bg-[#090909] p-4 text-center">
                     <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[#646464]">
-                      Promise Score
+                      Ranking heuristic
                     </span>
                     <div className="mt-1 flex items-baseline justify-center gap-1">
                       <span className="font-mono text-3xl font-bold text-[#ccf200]">
@@ -249,11 +250,7 @@ export function ScoutFeed({
                     <div className="mt-2 text-center">
                       <StatusBadge
                         status={
-                          item.promise_score >= 80
-                            ? "High Conviction"
-                            : item.promise_score >= 65
-                            ? "Emerging Signal"
-                            : "Early Discovery"
+                          "Investigate fit"
                         }
                         tone={
                           item.promise_score >= 80 ? "positive" : "warning"
@@ -279,11 +276,9 @@ export function ScoutFeed({
                       </span>
                     </div>
                     <div className="flex justify-between text-[#9a9a9a]">
-                      <span>Confidence:</span>
+                      <span>Evidence coverage:</span>
                       <span className="font-bold text-[#ccf200]">
-                        {item.confidence
-                          ? `${Math.round(item.confidence * 100)}%`
-                          : "70%"}
+                        {coverage(item.confidence)}
                       </span>
                     </div>
                   </div>

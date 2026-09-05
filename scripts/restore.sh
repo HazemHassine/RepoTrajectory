@@ -1,72 +1,45 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# RepoTrajectory Database Restore & Rehearsal Procedure
-# Usage: ./scripts/restore.sh <path_to_backup_file> [--rehearsal]
-
-if [ $# -lt 1 ]; then
-  echo "Usage: $0 <path_to_backup_file> [--rehearsal]"
+# Rehearsal uses an isolated database and retains it on failure for inspection.
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ] || { [ "$#" -eq 2 ] && [ "$2" != "--rehearsal" ]; }; then
+  echo "Usage: $0 <backup_file> [--rehearsal]" >&2
   exit 1
 fi
-
 BACKUP_FILE="$1"
-REHEARSAL=0
-if [ "${2:-}" = "--rehearsal" ]; then
-  REHEARSAL=1
-fi
-
-if [ ! -f "${BACKUP_FILE}" ]; then
-  echo "Error: Backup file not found: ${BACKUP_FILE}"
+if [ ! -f "$BACKUP_FILE" ]; then
+  echo "Backup file not found: $BACKUP_FILE" >&2
   exit 1
 fi
-
 POSTGRES_HOST="${POSTGRES_HOST:-postgres}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 POSTGRES_USER="${POSTGRES_USER:-github_analytics}"
 TARGET_DB="${POSTGRES_DB:-github_analytics}"
-
-if [ "${REHEARSAL}" -eq 1 ]; then
-  TARGET_DB="repotrajectory_rehearsal_$(date +%s)"
-  echo "[$(date -u)] Performing RESTORE REHEARSAL into isolated database: ${TARGET_DB}..."
-  PGPASSWORD="${POSTGRES_PASSWORD:-github_analytics}" psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -c "CREATE DATABASE ${TARGET_DB};"
-else
-  echo "[$(date -u)] WARNING: Restoring into target production database: ${TARGET_DB}!"
+export PGPASSWORD="${POSTGRES_PASSWORD:-github_analytics}"
+REHEARSAL=0
+if [ "${2:-}" = "--rehearsal" ]; then
+  REHEARSAL=1
+  TARGET_DB="repotrajectory_rehearsal_$(date +%s)_$$"
+  psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $TARGET_DB;"
 fi
-
-echo "[$(date -u)] Restoring from ${BACKUP_FILE} into ${TARGET_DB}..."
-
-if [[ "${BACKUP_FILE}" == *.gz ]]; then
-  gunzip -c "${BACKUP_FILE}" | PGPASSWORD="${POSTGRES_PASSWORD:-github_analytics}" pg_restore \
-    -h "${POSTGRES_HOST}" \
-    -p "${POSTGRES_PORT}" \
-    -U "${POSTGRES_USER}" \
-    -d "${TARGET_DB}" \
-    --no-owner --no-acl --clean --if-exists || true
+trap 'echo "Restore failed for $TARGET_DB. No success reported; inspect the error above." >&2' ERR
+echo "Restoring $BACKUP_FILE into $TARGET_DB"
+RESTORE_ARGS=(-h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$TARGET_DB"
+  --exit-on-error --single-transaction --no-owner --no-acl --clean --if-exists)
+if [[ "$BACKUP_FILE" == *.gz ]]; then
+  gunzip -c "$BACKUP_FILE" | pg_restore "${RESTORE_ARGS[@]}"
 else
-  PGPASSWORD="${POSTGRES_PASSWORD:-github_analytics}" pg_restore \
-    -h "${POSTGRES_HOST}" \
-    -p "${POSTGRES_PORT}" \
-    -U "${POSTGRES_USER}" \
-    -d "${TARGET_DB}" \
-    --no-owner --no-acl --clean --if-exists "${BACKUP_FILE}" || true
+  pg_restore "${RESTORE_ARGS[@]}" "$BACKUP_FILE"
 fi
-
-echo "[$(date -u)] Verifying table records..."
-ROW_COUNTS=$(PGPASSWORD="${POSTGRES_PASSWORD:-github_analytics}" psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -d "${TARGET_DB}" -t -c "
-  SELECT 
-    (SELECT COUNT(*) FROM catalog_repositories) AS catalog_count,
-    (SELECT COUNT(*) FROM repositories) AS repo_count,
-    (SELECT COUNT(*) FROM repository_embeddings) AS emb_count,
-    (SELECT COUNT(*) FROM scout_assessments) AS scout_count;
-" 2>/dev/null || echo "Unable to query table counts")
-
-echo "[$(date -u)] Restore Verification Metrics (catalog, repos, embeddings, scout):"
-echo "${ROW_COUNTS}"
-
-if [ "${REHEARSAL}" -eq 1 ]; then
-  echo "[$(date -u)] Cleaning up rehearsal database ${TARGET_DB}..."
-  PGPASSWORD="${POSTGRES_PASSWORD:-github_analytics}" psql -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" -c "DROP DATABASE ${TARGET_DB};"
-  echo "[$(date -u)] Rehearsal completed successfully."
-else
-  echo "[$(date -u)] Restore completed successfully."
+echo "Verifying schema revision and every public table..."
+psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$TARGET_DB" -v ON_ERROR_STOP=1 <<'SQL'
+SELECT version_num AS restored_schema_version FROM alembic_version;
+SELECT format('SELECT %L AS table_name, count(*) AS row_count FROM %I.%I;',
+              tablename, schemaname, tablename)
+FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename
+\gexec
+SQL
+if [ "$REHEARSAL" -eq 1 ]; then
+  psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE $TARGET_DB;"
 fi
+echo "Restore completed successfully."

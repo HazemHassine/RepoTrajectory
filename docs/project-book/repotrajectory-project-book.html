@@ -1,0 +1,878 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RepoTrajectory — Complete Technical Project Book</title>
+<meta name="author" content="Generated from repository source on 2026-09-05">
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #07090d; color: #17202b; font-family: Arial, Helvetica, sans-serif; }
+  body { counter-reset: sheet; }
+  .page { width: 210mm; height: 297mm; padding: 16mm 16mm 14mm; position: relative; overflow: hidden; page-break-after: always; background: #f6f7f9; counter-increment: sheet; }
+  .page:last-child { page-break-after: auto; }
+  .page::after { content: "RepoTrajectory technical reference  •  " counter(sheet) " / 59"; position: absolute; left: 16mm; right: 16mm; bottom: 6mm; padding-top: 2mm; border-top: .25mm solid #cdd3da; color: #6c7784; font: 7pt "Courier New", monospace; letter-spacing: .04em; }
+  .dark { background: #080b0d; color: #f3f5f4; }
+  .dark::after { border-color: #2a3339; color: #7f8c91; }
+  .accent { color: #779f00; }
+  .dark .accent { color: #c9ff00; }
+  h1 { margin: 0 0 5mm; font-size: 25pt; line-height: 1.02; letter-spacing: -.035em; }
+  h2 { margin: 0 0 4mm; font-size: 17pt; line-height: 1.08; letter-spacing: -.02em; }
+  h3 { margin: 4mm 0 1.6mm; font-size: 10.5pt; line-height: 1.2; color: #32404f; }
+  .dark h3 { color: #d7e0df; }
+  p, li, td, th { font-size: 8.7pt; line-height: 1.38; }
+  p { margin: 0 0 2.5mm; }
+  ul, ol { margin: 1.5mm 0 3mm 5mm; padding-left: 3mm; }
+  li { margin: 0 0 1.1mm; }
+  code, pre, .mono { font-family: "Courier New", monospace; }
+  code { color: #5f8200; font-size: .94em; }
+  pre { margin: 2mm 0 3mm; padding: 3mm; border-radius: 2mm; background: #111820; color: #d9e4e9; font-size: 7.6pt; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .kicker { margin-bottom: 3mm; color: #718000; font: bold 7.5pt "Courier New", monospace; text-transform: uppercase; letter-spacing: .14em; }
+  .dark .kicker { color: #c9ff00; }
+  .lede { font-size: 11pt; line-height: 1.45; color: #495564; }
+  .dark .lede { color: #a9b4b8; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
+  .card { border: .25mm solid #cbd2d9; border-radius: 2mm; padding: 3.2mm; background: #fff; break-inside: avoid; }
+  .dark .card { border-color: #2a343a; background: #0d1215; }
+  .card h3 { margin-top: 0; }
+  .callout { margin: 3mm 0; padding: 3mm 3.5mm; border-left: 1.2mm solid #91bd00; background: #edf4d6; }
+  .dark .callout { background: #161e12; border-color: #c9ff00; color: #dce5dc; }
+  .warn { border-left-color: #e09b14; background: #fff5d9; }
+  .danger { border-left-color: #d44b55; background: #ffe8ea; }
+  table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; }
+  th { color: #344252; background: #e7ebef; text-align: left; font-size: 7.5pt; letter-spacing: .025em; }
+  th, td { border: .22mm solid #cdd3da; padding: 1.7mm 2mm; vertical-align: top; }
+  td code { overflow-wrap: anywhere; }
+  .tight th, .tight td { padding: 1.25mm 1.5mm; font-size: 7.6pt; line-height: 1.28; }
+  .mini { font-size: 7.4pt; line-height: 1.3; }
+  .big-number { font: bold 24pt "Courier New", monospace; line-height: 1; color: #608400; }
+  .label { font: bold 7pt "Courier New", monospace; text-transform: uppercase; letter-spacing: .08em; color: #6c7784; }
+  .tag { display: inline-block; padding: .8mm 1.5mm; margin: .5mm .5mm .5mm 0; border: .2mm solid #aeb7c0; border-radius: 4mm; font: 7pt "Courier New", monospace; }
+  .path { color: #35495e; font-family: "Courier New", monospace; font-weight: bold; }
+  .diagram { width: 100%; max-height: 165mm; object-fit: contain; margin: 3mm auto; display: block; }
+  .screen { width: 100%; max-height: 205mm; object-fit: contain; object-position: top center; border: .35mm solid #253039; border-radius: 2mm; background: #060707; }
+  .caption { margin-top: 2mm; color: #66717e; font-size: 7.4pt; line-height: 1.35; }
+  .toc { columns: 2; column-gap: 9mm; }
+  .toc p { display: flex; gap: 2mm; margin: 0 0 1.45mm; font-size: 8.2pt; }
+  .toc b { color: #6d9200; font-family: "Courier New", monospace; min-width: 7mm; }
+  .rule { height: .6mm; width: 20mm; background: #a9dc00; margin: 5mm 0; }
+  .hero { margin-top: 45mm; }
+  .hero h1 { max-width: 160mm; font-size: 39pt; }
+  .hero .subtitle { max-width: 142mm; color: #aeb8b9; font-size: 14pt; line-height: 1.35; }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5mm; margin: 8mm 0; }
+  .facts .card { padding: 3mm; }
+  .sourceline { font-size: 7.3pt; color: #6b7680; font-family: "Courier New", monospace; }
+  .two-col { columns: 2; column-gap: 7mm; }
+  .two-col h3, .two-col .card, .two-col table { break-inside: avoid; }
+  .flowline { font: bold 10pt "Courier New", monospace; color: #5e780b; padding: 3mm; border: .25mm dashed #98a878; text-align: center; }
+  .checklist li::marker { color: #759d00; content: "✓  "; }
+  .small-gap p { margin-bottom: 1.6mm; }
+</style>
+</head>
+<body>
+
+<section class="page dark">
+  <div class="hero">
+    <div class="kicker">/RT/ • complete project intelligence</div>
+    <h1>RepoTrajectory<br><span class="accent">Technical Project Book</span></h1>
+    <div class="rule"></div>
+    <p class="subtitle">A self-contained, implementation-grounded guide for engineers and AI agents: product intent, architecture, collection, storage, analytics, search, security, UI, operations, tests, risks, and safe extension points.</p>
+    <div style="margin-top:18mm" class="grid3">
+      <div class="card"><span class="label">Repository</span><p class="mono">github_analysis</p></div>
+      <div class="card"><span class="label">Source snapshot</span><p class="mono">main @ 9e63544</p></div>
+      <div class="card"><span class="label">Generated</span><p class="mono">2026-09-05 • Europe/Berlin</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="kicker">Document contract</div><h1>How to use this book</h1>
+  <p class="lede">This PDF is an orientation layer over the repository, not a substitute for source control. It is written so an unfamiliar AI can form a correct mental model before editing code.</p>
+  <div class="grid2">
+    <div class="card"><h3>Ground-truth order</h3><ol><li>Current source code and migrations.</li><li>Executable tests and runtime behavior.</li><li>Configuration in <span class="path">backend/app/core/config.py</span> and Compose.</li><li>This project book and checked-in Markdown docs.</li></ol></div>
+    <div class="card"><h3>Scope</h3><p>Monorepo application, data pipelines, data model, API, web interface, privileged operations, analytics methodology, and local production-like deployment.</p><p>It does not embed secrets, database contents, or generated dependencies.</p></div>
+    <div class="card"><h3>Evidence basis</h3><p>Read from all application modules, eight migrations, tests, Docker assets, shell operations, and current live routes. Screenshots were captured from the local Compose stack.</p></div>
+    <div class="card"><h3>Freshness caveat</h3><p>Runtime counts are a point-in-time observation. Product logic is tied to commit <code>9e63544</code>. If HEAD differs, run <code>git diff 9e63544..HEAD</code> and revalidate affected chapters.</p></div>
+  </div>
+  <div class="callout"><b>AI reading strategy.</b> Read pages 3–12 for the system model, the subsystem chapter relevant to the task, then pages 53–58 for modification rules, invariants, and file ownership.</div>
+  <h3>Notation</h3>
+  <table><tr><th>Notation</th><th>Meaning</th></tr><tr><td><code>candidate</code></td><td>Cheaply known repository; not necessarily in public directory or deeply hydrated.</td></tr><tr><td><code>directory</code> / <code>deep</code></td><td>Canonical v2 membership levels. Legacy collection uses <code>candidate</code>/<code>active</code>/<code>pinned</code>.</td></tr><tr><td>“observed”</td><td>Derived from collected GitHub/GH Archive facts, never reconstructed as ground truth.</td></tr></table>
+</section>
+
+<section class="page">
+  <div class="kicker">Contents</div><h1>Fifty-nine page map</h1>
+  <div class="toc">
+    <p><b>01</b> Cover</p><p><b>02</b> Document contract</p><p><b>03</b> Contents</p><p><b>04</b> Executive summary</p><p><b>05</b> Product questions and users</p><p><b>06</b> System context</p><p><b>07</b> Deployment topology</p><p><b>08</b> Runtime request paths</p><p><b>09</b> Repository map</p><p><b>10</b> Technology stack</p><p><b>11</b> Domain model and tiers</p><p><b>12</b> End-to-end data pipeline</p><p><b>13</b> Source and evidence policy</p><p><b>14</b> GitHub Search discovery</p><p><b>15</b> GH Archive processing</p><p><b>16</b> Classification</p><p><b>17</b> Reconciliation and selection</p><p><b>18</b> Deep hydration</p><p><b>19</b> Incremental synchronization</p><p><b>20</b> Durable queue state machine</p><p><b>21</b> Scheduler and job catalog</p><p><b>22</b> Database overview</p><p><b>23</b> Hydrated evidence tables</p><p><b>24</b> Discovery and operations tables</p><p><b>25</b> Canonical catalog tables</p><p><b>26</b> Analytics execution</p><p><b>27</b> Momentum score</p><p><b>28</b> Community health score</p><p><b>29</b> Concentration, velocity, confidence</p><p><b>30</b> Directory selection score</p><p><b>31</b> Scout scoring</p><p><b>32</b> AI provider degradation</p><p><b>33</b> Hybrid search</p><p><b>34</b> API conventions</p><p><b>35</b> API v1 endpoint catalog</p><p><b>36</b> API v2 endpoint catalog</p><p><b>37</b> Admin endpoint catalog</p><p><b>38</b> Web application structure</p><p><b>39</b> Home screenshot</p><p><b>40</b> Directory screenshot</p><p><b>41</b> Scout screenshot</p><p><b>42</b> Compare screenshot</p><p><b>43</b> Repository dossier screenshot</p><p><b>44</b> Methodology screenshot</p><p><b>45</b> Collection screenshot</p><p><b>46</b> Admin screenshot</p><p><b>47</b> Security boundary</p><p><b>48</b> Authentication and CSRF flow</p><p><b>49</b> Configuration: core and collection</p><p><b>50</b> Configuration: AI and capacity</p><p><b>51</b> Local development</p><p><b>52</b> Docker and proxy deployment</p><p><b>53</b> Operations and observability</p><p><b>54</b> Backup, restore, recovery</p><p><b>55</b> Tests and quality gates</p><p><b>56</b> Live runtime snapshot</p><p><b>57</b> Limits, risks, debt</p><p><b>58</b> Safe extension playbooks</p><p><b>59</b> AI handoff checklist and index</p>
+  </div>
+</section>
+
+<section class="page">
+  <div class="kicker">Orientation / 01</div><h1>Executive summary</h1>
+  <p class="lede">RepoTrajectory is an explainable open-source repository intelligence system. It continuously builds a bounded evidence base and presents repository discovery, health, momentum, delivery, and contributor-dependency signals through a research console.</p>
+  <div class="facts">
+    <div class="card"><span class="label">Backend</span><div class="big-number">FastAPI</div><p>Async SQLAlchemy and durable jobs.</p></div>
+    <div class="card"><span class="label">Frontend</span><div class="big-number">Next.js</div><p>Server/client UI with typed fetch layer.</p></div>
+    <div class="card"><span class="label">Store</span><div class="big-number">PG16</div><p>Relational facts plus pgvector.</p></div>
+    <div class="card"><span class="label">Sources</span><div class="big-number">2</div><p>GitHub REST/Search + GH Archive.</p></div>
+  </div>
+  <div class="grid2">
+    <div><h3>Core idea</h3><p>Separate cheap, wide discovery from expensive, narrow historical hydration. Search and GH Archive identify candidates; policy selects a cohort; workers hydrate only that bounded set; analytics store components and evidence alongside scores.</p><h3>Primary outputs</h3><ul><li>Canonical repository directory with filters and lenses.</li><li>Hybrid lexical/semantic search.</li><li>Scout feed for under-the-radar promise.</li><li>Deep repository dossiers and comparison.</li><li>Collector observability and a hardened admin plane.</li></ul></div>
+    <div><h3>Key architectural properties</h3><ul><li>Idempotent upserts and unique job deduplication.</li><li>Leased PostgreSQL queue safe for multiple workers.</li><li>Bounded collection and explicit retention policies.</li><li>Missing evidence remains missing; score weights re-normalize where defined.</li><li>Hosted AI is optional: deterministic fallback preserves availability.</li><li>Only Caddy exposes a host port by default.</li></ul><div class="callout"><b>One-sentence model:</b> evidence sources → compact candidates → transparent selection → bounded hydration → explainable scoring → v1/v2 APIs → Next.js research workflows.</div></div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="kicker">Orientation / 02</div><h1>Product questions and users</h1>
+  <div class="grid3">
+    <div class="card"><h3>Developer lens</h3><p>What does this repository do? Is it active? Which technologies and topics define it? Can I discover alternatives by purpose rather than popularity?</p></div>
+    <div class="card"><h3>Maintainer lens</h3><p>Is delivery healthy? Are issues and pull requests resolving? Is work concentrated in too few people? What evidence is stale or weak?</p></div>
+    <div class="card"><h3>Growth / investor lens</h3><p>Which projects show adoption acceleration, development cadence, and early promise? What is moving, and why did the system surface it?</p></div>
+  </div>
+  <h3>Research surfaces</h3>
+  <table><tr><th>Surface</th><th>User question</th><th>Evidence</th></tr>
+    <tr><td>Home</td><td>Where should I begin?</td><td>Search, analytical lenses, current Scout picks.</td></tr>
+    <tr><td>Repositories</td><td>What matches filters and desired viewpoint?</td><td>Catalog metadata, selection scores, deep/scout indicators.</td></tr>
+    <tr><td>Scout</td><td>What promising software is not already obvious?</td><td>Quantitative activity plus structured AI/fallback rationale.</td></tr>
+    <tr><td>Compare</td><td>How do selected projects differ?</td><td>Catalog and deep metrics, normalized presentation.</td></tr>
+    <tr><td>Repository dossier</td><td>What is the complete case for one project?</td><td>Profile, metrics, contributors, history, activity, provenance.</td></tr>
+    <tr><td>Methodology</td><td>How were scores produced?</td><td>Weights, caveats, evidence semantics.</td></tr>
+    <tr><td>Collection</td><td>Is the evidence pipeline current?</td><td>Queue, tiers, rate budget, archive and DB telemetry.</td></tr>
+    <tr><td>Admin</td><td>How do I safely intervene?</td><td>Allowlisted commands, job controls, audit ledger.</td></tr>
+  </table>
+  <div class="callout"><b>Non-goal:</b> scores are not scientific truth, investment advice, or a literal bus factor. The product intentionally exposes components, samples, coverage, uncertainty, and freshness so humans can interpret them.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Architecture / 01</div><h1>System context</h1>
+  <img class="diagram" src="diagrams/system-context.svg" alt="System context diagram">
+  <div class="grid2">
+    <div class="card"><h3>Inbound evidence</h3><p>GitHub Search yields recent public software metadata. GitHub REST hydrates repository entities. GH Archive yields public event counts without retaining raw payloads. An OpenAI-compatible endpoint optionally provides embeddings and structured Scout evaluation.</p></div>
+    <div class="card"><h3>Outbound behavior</h3><p>Public users receive read-only research views and APIs. A local operator receives a separate authenticated command surface. RepoTrajectory issues only GET requests to GitHub and does not write back to repositories.</p></div>
+  </div>
+  <p class="caption">Trust boundary: GitHub, GH Archive, and the AI endpoint are external dependencies. Browser traffic reaches the application through Caddy; PostgreSQL and Redis remain unexposed on the host in the default Compose file.</p>
+</section>
+
+<section class="page">
+  <div class="kicker">Architecture / 02</div><h1>Deployment topology</h1>
+  <img class="diagram" src="diagrams/deployment.svg" alt="Docker deployment topology">
+  <table class="tight"><tr><th>Service</th><th>Responsibility</th><th>Reachability / persistence</th></tr>
+    <tr><td><code>proxy</code></td><td>Caddy routes UI and <code>/backend/*</code>.</td><td>Only published port; default 10100.</td></tr>
+    <tr><td><code>web</code></td><td>Next.js server and client assets.</td><td>Private :3000; SSR calls <code>api:8000</code>.</td></tr>
+    <tr><td><code>api</code></td><td>FastAPI v1/v2/admin and OpenAPI.</td><td>Private :8000; migrates on startup.</td></tr>
+    <tr><td><code>collector</code></td><td>Scheduler plus one durable-job worker loop.</td><td>Private; shares backend image/config.</td></tr>
+    <tr><td><code>postgres</code></td><td>System of record and vector index.</td><td><code>postgres_data</code>, <code>backups_data</code>.</td></tr>
+    <tr><td><code>redis</code></td><td>Provisioned infrastructure.</td><td><code>redis_data</code>; current source does not use it in core paths.</td></tr>
+  </table>
+  <div class="callout warn"><b>Important mismatch to remember:</b> Compose sets <code>REDIS_URL</code>, but <code>Settings</code> has no Redis field and current services coordinate through PostgreSQL. Treat Redis as reserved rather than required application state.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Architecture / 03</div><h1>Runtime request paths</h1>
+  <div class="grid2">
+    <div class="card"><h3>Browser → UI/API</h3><ol><li>Browser requests <code>http://localhost:10100</code>.</li><li>Caddy sends <code>/backend/*</code> to FastAPI after stripping the prefix; all other traffic goes to Next.js.</li><li>Browser-side <span class="path">frontend/lib/api.ts</span> uses <code>/backend</code>.</li><li>Server-rendered pages use <code>API_INTERNAL_URL</code>, defaulting to <code>http://localhost:8001</code> outside Compose.</li></ol></div>
+    <div class="card"><h3>Read query</h3><ol><li>FastAPI injects <code>AsyncSession</code>.</li><li>Route composes SQLAlchemy statements or calls a service.</li><li>Pydantic response models shape public contracts.</li><li>Security middleware adds headers globally; admin adds no-store behavior.</li></ol></div>
+    <div class="card"><h3>Background collection</h3><ol><li>Scheduler enqueues unique policy jobs.</li><li>Worker leases one due row.</li><li>GitHub/GH Archive calls happen outside HTTP requests.</li><li>Worker commits normalized evidence, analytics, catalog sync, and job outcome.</li></ol></div>
+    <div class="card"><h3>Admin mutation</h3><ol><li>Session cookie is decoded and expiry-checked.</li><li>Origin, Fetch Metadata, and CSRF are checked.</li><li>Allowlisted operation performs conditional or enqueue-only mutation.</li><li>Outcome is appended to audit log.</li></ol></div>
+  </div>
+  <div class="flowline">Public reads are synchronous • expensive ingestion is asynchronous • PostgreSQL is both evidence store and coordination plane</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Architecture / 04</div><h1>Repository map</h1>
+  <table><tr><th>Path</th><th>Purpose and ownership</th></tr>
+    <tr><td class="path">backend/app/api/</td><td>HTTP contracts. <code>routes.py</code> is v1, <code>v2/routes.py</code> is canonical catalog/search/scout, <code>admin.py</code> is privileged.</td></tr>
+    <tr><td class="path">backend/app/services/</td><td>Use-case logic: ingestion, discovery, collector, analytics, catalog, directory, search, Scout, AI, benchmark, admin audit.</td></tr>
+    <tr><td class="path">backend/app/db/models.py</td><td>All ORM entities and relational invariants.</td></tr>
+    <tr><td class="path">backend/app/analytics/metrics.py</td><td>Pure score transforms and concentration math.</td></tr>
+    <tr><td class="path">backend/app/github/client.py</td><td>Rate-aware, retrying, paginated GitHub adapter.</td></tr>
+    <tr><td class="path">backend/alembic/versions/</td><td>Schema history; database changes must be expressed here.</td></tr>
+    <tr><td class="path">backend/tests/</td><td>SQLite-oriented unit/API tests plus provider and migration seams.</td></tr>
+    <tr><td class="path">frontend/app/</td><td>Next.js App Router pages: home, repositories, dossier, Scout, compare, rankings, methodology, collection, admin.</td></tr>
+    <tr><td class="path">frontend/components/</td><td>Interactive clients and reusable visual primitives.</td></tr>
+    <tr><td class="path">frontend/lib/api.ts</td><td>Browser/server base selection, TypeScript API types, request helpers.</td></tr>
+    <tr><td class="path">docs/</td><td>Collector, metrics, administration notes and generated project book.</td></tr>
+    <tr><td class="path">run.sh / Makefile</td><td>Developer/operations entry points.</td></tr>
+    <tr><td class="path">docker-compose*.yml / Caddyfile</td><td>Runtime topology and local proxy contract.</td></tr>
+    <tr><td class="path">analysis/</td><td>Decoupled research workspace; not on the application runtime path.</td></tr>
+  </table>
+</section>
+
+<section class="page">
+  <div class="kicker">Architecture / 05</div><h1>Technology stack and dependency posture</h1>
+  <div class="grid2">
+    <div><h3>Backend</h3><table class="tight"><tr><td>Python</td><td>≥3.12</td></tr><tr><td>FastAPI</td><td>≥0.115,&lt;1</td></tr><tr><td>SQLAlchemy</td><td>async 2.x</td></tr><tr><td>PostgreSQL driver</td><td>asyncpg</td></tr><tr><td>Migrations</td><td>Alembic</td></tr><tr><td>HTTP client</td><td>httpx</td></tr><tr><td>Vector type</td><td>pgvector</td></tr><tr><td>CLI</td><td>Typer</td></tr><tr><td>Logging</td><td>structlog</td></tr><tr><td>Serialization</td><td>Pydantic + orjson dependency</td></tr></table></div>
+    <div><h3>Frontend</h3><table class="tight"><tr><td>Next.js</td><td>^16.3.1</td></tr><tr><td>React / React DOM</td><td>^19</td></tr><tr><td>TypeScript</td><td>^5.7</td></tr><tr><td>Tailwind</td><td>^3.4</td></tr><tr><td>Motion</td><td>^13.1.1</td></tr><tr><td>Icons</td><td>Heroicons 2</td></tr><tr><td>Charts</td><td>Native SVG components</td></tr></table></div>
+  </div>
+  <h3>Infrastructure</h3><p><span class="tag">pgvector/pgvector:pg16</span><span class="tag">redis:7-alpine</span><span class="tag">caddy:2-alpine</span><span class="tag">Docker Compose</span><span class="tag">named volumes</span></p>
+  <h3>Quality posture</h3><p>Backend declares strict MyPy, Ruff rules <code>E,F,I,UP,B,ASYNC</code>, pytest-asyncio, and respx. The frontend’s <code>build</code> is the effective type/build gate. Dependency ranges intentionally stay within major versions; lock files are present for both Python (<code>uv.lock</code>) and npm.</p>
+  <div class="callout"><b>Version note.</b> The current package declares Next.js 16.3.1 even if older prose says Next.js generically. For upgrade work, trust <span class="path">frontend/package.json</span> and its lockfile.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Domain / 01</div><h1>Domain model and membership tiers</h1>
+  <p class="lede">Two related models coexist: the original collection/hydration model and the newer canonical catalog model. They are linked but must not be conflated.</p>
+  <div class="grid2">
+    <div class="card"><h3>Legacy collection track</h3><p><code>RepositoryCandidate</code> is a discovered row. Tier values:</p><ul><li><b>candidate</b>: known, not selected.</li><li><b>active</b>: selected by collection policy for recurring hydration.</li><li><b>pinned</b>: explicitly requested, highest priority.</li></ul><p><code>Repository</code> is the deeply hydrated normalized record.</p></div>
+    <div class="card"><h3>Canonical catalog track (v2)</h3><p><code>CatalogRepository</code> unifies broad discovery and hydrated facts. Flags/tiers:</p><ul><li><b>candidate</b>: retained pool.</li><li><b>directory</b>: selected public catalog.</li><li><b>deep</b>: highest-value directory subset, preferably hydrated.</li></ul><p>Scout, embeddings, provenance, and search documents attach here.</p></div>
+  </div>
+  <h3>Stable identity</h3><p>GitHub numeric <code>github_id</code> is the durable external identity; <code>full_name</code> can change on rename/transfer. The GitHub client follows redirects, and catalog/repository upserts store the canonical response identity.</p>
+  <h3>Key linkage</h3><pre>RepositoryCandidate.repository_id  ── optional 1:1 ──▶ Repository.id
+CatalogRepository.repository_id  ── optional 1:1 ──▶ Repository.id
+CatalogRepository.github_id      ── parent key ─────▶ search / embedding / scout</pre>
+  <div class="callout warn"><b>Implementation caution.</b> Some services are mature legacy collection paths and others are v2 canonical paths. A new feature should declare which universe it reads and how synchronization is maintained.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Collection / 01</div><h1>End-to-end evidence pipeline</h1>
+  <img class="diagram" src="diagrams/pipeline.svg" alt="End-to-end data pipeline">
+  <div class="grid2">
+    <div><h3>Wide and cheap</h3><p>Discovery is designed for tens of thousands of repositories. Metadata and compressed hourly counters are sufficient to classify and prioritize without paying deep REST cost.</p></div>
+    <div><h3>Narrow and expensive</h3><p>Hydration is bounded by time windows and item limits. Only selected or pinned repositories receive commits, PRs, issues, releases, contributors, snapshots, and metrics.</p></div>
+  </div>
+  <div class="callout"><b>Essential invariant:</b> candidate selection can be replayed; deep evidence is incremental and idempotent; raw GH Archive event JSON is never persisted.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Collection / 02</div><h1>Source and evidence policy</h1>
+  <table><tr><th>Source</th><th>What is collected</th><th>What is not assumed</th></tr>
+    <tr><td>GitHub Search</td><td>ID, owner/name, description, language, topics, stars/forks, pushed time, fork/archive flags.</td><td>Search order is not a quality ranking; coverage depends on query shards and API caps.</td></tr>
+    <tr><td>GH Archive</td><td>Hourly counts of Watch, Fork, Push, PullRequest, Issues, and Release events per repository.</td><td>No raw payload retention; counters do not equal unique humans or complete repository history.</td></tr>
+    <tr><td>GitHub REST</td><td>Canonical repo metadata, default-branch commits, recent issues/PRs/releases, contributor aggregates, languages/topics, README.</td><td>No CI reliability, review detail, permissions, tacit maintainer knowledge, or historical stars before observation.</td></tr>
+    <tr><td>Hosted AI</td><td>Text embedding and schema-constrained Scout judgment.</td><td>It never becomes sole evidence; service can degrade to deterministic fallback.</td></tr>
+  </table>
+  <h3>Storage bounds</h3>
+  <div class="grid3"><div class="card"><span class="label">Raw archive JSON</span><div class="big-number">0</div><p>Never stored.</p></div><div class="card"><span class="label">External activity</span><div class="big-number">90d</div><p>Default retention.</p></div><div class="card"><span class="label">README</span><div class="big-number">20K</div><p>Characters bounded; 500-character excerpt.</p></div></div>
+  <div class="callout warn"><b>Epistemic rule:</b> “missing” is not “neutral.” Growth components are excluded until snapshot coverage exists; other missing response evidence can score zero and remains visible with sample sizes.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Collection / 03</div><h1>GitHub Search discovery</h1>
+  <div class="grid2">
+    <div><h3>Legacy daily language search</h3><p><span class="path">services/discovery.py</span> builds per-language searches with default eligibility of at least 500 stars and a push within 180 days. Results become <code>RepositoryCandidate</code> rows and collection memberships.</p><h3>Canonical sharded search</h3><p><span class="path">services/directory.py</span> searches language × star-band × freshness shards, allowing low-star projects into the v2 pool. Default scheduled shards cover the first two configured languages and bands 0–10, 11–50, and 51–200.</p></div>
+    <div><h3>Canonical upsert behavior</h3><ul><li>Conflict key: numeric GitHub ID.</li><li>Initial classification is <code>software</code> with 0.8 confidence for the sharded path.</li><li>Normalized topics are lowercased and underscores become hyphens.</li><li>Search document is inserted/updated in the same use case.</li><li>Observation timestamps distinguish discovery from last observation.</li></ul><h3>Search limits</h3><p>GitHub Search has its own smaller rate bucket and result ceilings. The client preserves a configured reserve and scheduled queries use dedupe keys scoped by language and day.</p></div>
+  </div>
+  <pre>language:{language} stars:{min}..{max} pushed:&gt;={cutoff} fork:false
+
+Default languages: Python, TypeScript, JavaScript, Go, Rust, Java</pre>
+  <div class="callout"><b>Why two paths?</b> The legacy collection prioritizes established active software for deep analytics; canonical sharding broadens the directory and Scout funnel toward emerging projects.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Collection / 04</div><h1>GH Archive streaming and projection</h1>
+  <p class="lede">Each lagged hourly <code>.json.gz</code> object is streamed, parsed line-by-line, folded into bounded counters, and discarded.</p>
+  <div class="grid2">
+    <div class="card"><h3>Recognized events</h3><ul><li><code>WatchEvent</code> → star</li><li><code>ForkEvent</code> → fork</li><li><code>PushEvent</code> → push</li><li><code>PullRequestEvent</code> → collaboration</li><li><code>IssuesEvent</code> → collaboration</li><li><code>ReleaseEvent</code> → delivery</li></ul></div>
+    <div class="card"><h3>Selection behavior</h3><p>Adoption and collaboration lead ranking. Push volume is capped as supporting evidence to prevent noisy push streams from dominating. At most 500 repositories per hour are retained by default.</p></div>
+  </div>
+  <h3>Projection lifecycle</h3><ol><li>Scheduler chooses six hours ending three hours behind wall clock.</li><li><code>GhArchiveClient.read_hour</code> streams compressed bytes and events.</li><li>Projector returns counters plus event and byte totals.</li><li><code>persist_gh_archive_hour</code> maps external repositories to candidates and atomically replaces that hour’s rows.</li><li><code>GhArchiveFile</code> records status, counts, bytes, algorithm version, and errors.</li></ol>
+  <div class="callout"><b>Versioning invariant.</b> Dedupe keys and file records contain <code>GH_ARCHIVE_ALGORITHM_VERSION</code>. A formula change must bump the version so the configured hours replay and old projections do not mix with new ones.</div>
+  <p class="sourceline">Primary code: backend/app/services/discovery.py • orchestration: backend/app/services/collector.py</p>
+</section>
+
+<section class="page">
+  <div class="kicker">Collection / 05</div><h1>Transparent repository classification</h1>
+  <p>Classification gates expensive hydration and makes rejection explainable. It uses repository metadata, not an opaque model.</p>
+  <table><tr><th>Class family</th><th>Examples of signals</th><th>Hydration</th></tr>
+    <tr><td><code>library</code>, <code>framework</code>, <code>developer_tool</code>, <code>software</code></td><td>Package/framework/tool/app terms, software topics, focused descriptions.</td><td>Eligible when other guards pass.</td></tr>
+    <tr><td><code>learning_resource</code></td><td>Awesome lists, tutorials, interview material, courses, roadmaps.</td><td>Withheld.</td></tr>
+    <tr><td><code>template</code></td><td>Boilerplate, starter, template signals.</td><td>Withheld.</td></tr>
+    <tr><td><code>unclassified</code></td><td>Insufficient metadata or ambiguity.</td><td>May receive one-request probe, bounded per reconcile.</td></tr>
+  </table>
+  <h3>Decision outputs</h3><p><code>RepositoryClassification</code> carries the label, confidence, eligibility, and a human-readable rejection reason. Candidate rows persist each field so collection UIs and operators can inspect policy outcomes.</p>
+  <h3>Probe path</h3><p>Uncertain GH Archive discoveries often lack rich metadata. The reconciler returns a bounded list of candidate IDs; <code>probe_repository</code> fetches one repository record, reapplies classification, then queues another reconcile.</p>
+  <div class="callout warn"><b>Known limitation:</b> this is an intake heuristic, not semantic truth. False positives/negatives are expected. Manual pinning exists for edge cases, and reclassification is an explicit CLI/admin operation.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Collection / 06</div><h1>Reconciliation and cohort selection</h1>
+  <div class="grid2">
+    <div><h3>Legacy active cohort</h3><p><code>reconcile_collection</code> combines candidate metadata with recent external activity. Seven-day signal percentiles and popularity inform <code>trend_score</code>. Eligible software is ranked; up to <code>collector_active_limit</code> (250 default) becomes active. Pinned entries remain privileged.</p><h3>Hydration consequence</h3><p>New active candidates enqueue <code>hydrate_repository</code>. Existing active repositories become due after their next refresh. Queue priorities are recomputed from tier and trend score.</p></div>
+    <div><h3>Canonical directory</h3><p><code>reconcile_directory_and_cohort</code> selects up to 10,000 eligible catalog rows by selection score, stars, and recency while capping any language at 25%. Empty slots are filled by the next-best entries.</p><h3>Deep subset and pruning</h3><p>Up to 500 directory rows become deep, preferring already-hydrated repositories. Nonmembers older than 90 days are pruned, and the total pool is capped at 50,000 by deleting lowest-score nonmembers.</p></div>
+  </div>
+  <pre>legacy priority: pinned = 100
+active hydration = 25 + min(70, round(trend_score))
+
+canonical order: selection_score DESC, stars DESC, pushed_at DESC
+deep preference: hydrated, then selection_score, then stars</pre>
+  <div class="callout"><b>Transactional intent:</b> flags and memberships describe the current policy result; job deduplication prevents each reconcile from creating duplicate work for the same time bucket.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Collection / 07</div><h1>Deep GitHub REST hydration</h1>
+  <p class="lede"><code>RepositoryIngester</code> turns one <code>owner/repo</code> into normalized evidence with conflict-safe updates and strict safety ceilings.</p>
+  <table><tr><th>Resource</th><th>Default bound</th><th>Persistence</th></tr>
+    <tr><td>Repository metadata</td><td>One canonical response</td><td><code>repositories</code>; follows renames.</td></tr>
+    <tr><td>Commits</td><td>180 bootstrap days; 5,000 items</td><td>Default branch, SHA unique per repository.</td></tr>
+    <tr><td>Issues</td><td>3,000 recently updated</td><td>Pull-request-shaped issue payloads excluded.</td></tr>
+    <tr><td>Pull requests</td><td>3,000 recently updated</td><td>Created/closed/merged state and authors.</td></tr>
+    <tr><td>Releases</td><td>730 days; 500 items</td><td>Draft/prerelease flags retained.</td></tr>
+    <tr><td>Contributors</td><td>200</td><td>Contributor identity plus cumulative counts.</td></tr>
+    <tr><td>Languages/topics</td><td>GitHub response</td><td>Replacement tables per repository.</td></tr>
+    <tr><td>README</td><td>20,000 characters downstream</td><td>Search document + 500-char catalog excerpt.</td></tr>
+  </table>
+  <h3>After ingestion</h3><p>A UTC-day repository snapshot is upserted, metrics are recalculated for 30 days, and the hydrated repository is synchronized into the canonical catalog/search document. The candidate receives the resulting repository link and a next refresh timestamp.</p>
+  <div class="callout warn"><b>Interpretation:</b> ceilings define a recent bounded view, not completeness. A ceiling hit must be treated as coverage metadata, especially for very large repositories.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Collection / 08</div><h1>Incremental synchronization and GitHub behavior</h1>
+  <div class="grid2">
+    <div><h3>Per-resource state</h3><p><code>repository_sync_states</code> stores <code>resource</code>, time watermark, ETag, Last-Modified, last success/error, and next sync. Subsequent collection uses watermarks to stop pagination once known history is reached.</p><h3>Idempotency</h3><p>Repositories, commits, issues, PRs, releases, contributors, languages, and topics use conflict-aware inserts/updates or replacement semantics. A UTC-day snapshot is updated rather than duplicated.</p></div>
+    <div><h3>Client mechanics</h3><ul><li>30-second HTTP timeout and up to three retries.</li><li>Serial request lock per worker client.</li><li>Minimum request interval, default 0.15s.</li><li>Exponential retry for 429/5xx and secondary limits.</li><li>Primary rate reset is parsed and surfaced as a typed exception.</li><li>Redirects followed for rename/transfer.</li><li>Pagination follows Link headers and supports stop conditions.</li></ul></div>
+  </div>
+  <h3>Rate-budget behavior</h3><p>The client tracks <code>limit</code>, <code>remaining</code>, <code>used</code>, <code>reset_at</code>, resource, and per-process request count. The worker persists it in <code>collector_state</code>. When the reserve is reached or GitHub returns exhaustion, the current job is rescheduled after reset rather than failed.</p>
+  <div class="callout"><b>Scaling rule:</b> additional workers improve parsing and database concurrency but cannot create GitHub quota. Observe budget and DB latency before scaling.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Queue / 01</div><h1>Durable queue state machine</h1>
+  <img class="diagram" src="diagrams/queue.svg" alt="Job queue state machine">
+  <div class="grid2">
+    <div><h3>Claim protocol</h3><p>A worker selects one due queued row ordered by priority, schedule, then ID with <code>FOR UPDATE SKIP LOCKED</code>. It writes worker ID, lock time, first start time, and increments attempts before execution.</p></div>
+    <div><h3>Recovery protocol</h3><p>Every scheduler tick requeues running jobs whose lease exceeds the configured 30-minute default. Transient failures receive backoff; terminal/exhausted jobs remain visible.</p></div>
+  </div>
+  <div class="callout warn"><b>Concurrency protection:</b> admin retry/cancel uses status-conditional updates so a UI action cannot overwrite a job claimed concurrently by a worker.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Queue / 02</div><h1>Scheduler and job catalog</h1>
+  <table class="tight"><tr><th>Job type</th><th>Default priority</th><th>Effect</th></tr>
+    <tr><td><code>discover_github</code></td><td>100</td><td>Daily configured-language legacy search.</td></tr>
+    <tr><td><code>discover_gharchive</code></td><td>90</td><td>Stream and persist one versioned hour.</td></tr>
+    <tr><td><code>reconcile_directory</code></td><td>85</td><td>Rebuild canonical directory/deep memberships and prune.</td></tr>
+    <tr><td><code>scout_eval_batch</code></td><td>80</td><td>Evaluate expired/unevaluated candidates.</td></tr>
+    <tr><td><code>generate_embeddings</code></td><td>70</td><td>Generate missing/outdated catalog vectors.</td></tr>
+    <tr><td><code>discover_sharded</code></td><td>60</td><td>Low-star canonical search shards.</td></tr>
+    <tr><td><code>reconcile_collection</code></td><td>50</td><td>Classify/rank legacy candidates; emit hydrate/probe jobs.</td></tr>
+    <tr><td><code>probe_repository</code></td><td>45</td><td>One-request metadata clarification.</td></tr>
+    <tr><td><code>hydrate_repository</code>/<code>refresh_repository</code></td><td>25–95</td><td>Deep evidence, metrics, catalog sync.</td></tr>
+    <tr><td><code>ingest_repository</code></td><td>100 when pinned</td><td>Explicit one-off ingestion by full name.</td></tr>
+    <tr><td><code>maintenance</code></td><td>−10</td><td>Delete expired GH Archive projections/file ledgers.</td></tr>
+  </table>
+  <p>Time-bucketed <code>dedupe_key</code> values make repeated scheduler ticks safe. On cancellation, the same key can be reactivated with cleared attempts/locks. The continuous collector alternates scheduling and claiming with a default 10-second polling interval.</p>
+</section>
+
+<section class="page">
+  <div class="kicker">Storage / 01</div><h1>Database overview</h1>
+  <img class="diagram" src="diagrams/data-model.svg" alt="Simplified entity relationship diagram">
+  <p class="caption">This is a subsystem ER view, not every column. Cascade behavior is concentrated around repository/candidate/catalog children. Numeric GitHub ID connects external identity across broad and deep models.</p>
+  <div class="callout"><b>System of record:</b> PostgreSQL contains facts, derived snapshots, queue state, audit state, and vectors. Redis is not the authority for any current behavior.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Storage / 02</div><h1>Hydrated evidence tables</h1>
+  <table class="tight"><tr><th>Table / ORM</th><th>Key fields</th><th>Role and constraints</th></tr>
+    <tr><td><code>repositories</code></td><td>ID, github_id, owner/name, metadata, last_ingested</td><td>Deep canonical GitHub record; external IDs and full name indexed/unique.</td></tr>
+    <tr><td><code>repository_snapshots</code></td><td>repository, captured_at, stars/forks/issues/watchers/contributors</td><td>Observed growth baseline; one updated point per UTC day.</td></tr>
+    <tr><td><code>contributors</code></td><td>github_id, login, avatar</td><td>Person/account identity.</td></tr>
+    <tr><td><code>repository_contributors</code></td><td>repository + contributor, contributions</td><td>Many-to-many cumulative GitHub contribution count.</td></tr>
+    <tr><td><code>commits</code></td><td>repository + SHA, author, committed_at</td><td>Default-branch commit evidence; repo-scoped identity fixed in migration 0002.</td></tr>
+    <tr><td><code>pull_requests</code></td><td>repository + number, state, created/closed/merged</td><td>Cycle time and acceptance evidence.</td></tr>
+    <tr><td><code>issues</code></td><td>repository + number, state, created/closed</td><td>Issue intake and close-time evidence, excluding PR payloads.</td></tr>
+    <tr><td><code>releases</code></td><td>repository + github_id, publish time, draft/prerelease</td><td>Stable release cadence.</td></tr>
+    <tr><td><code>repository_languages</code></td><td>repository + language, bytes</td><td>Language footprint.</td></tr>
+    <tr><td><code>repository_topics</code></td><td>repository + topic</td><td>Normalized GitHub topics.</td></tr>
+    <tr><td><code>metric_snapshots</code></td><td>repo, time, window, 3 scores, JSON components</td><td>Append-only derived assessment and full explanation payload.</td></tr>
+  </table>
+  <p class="sourceline">Definition: backend/app/db/models.py lines 25–191 • creation evolved from Alembic 0001/0002/0003.</p>
+</section>
+
+<section class="page">
+  <div class="kicker">Storage / 03</div><h1>Discovery and operations tables</h1>
+  <table class="tight"><tr><th>Table</th><th>Purpose</th><th>Important invariant</th></tr>
+    <tr><td><code>collections</code></td><td>Named policy: candidate/active limits, refresh interval, enabled.</td><td>Stable unique slug.</td></tr>
+    <tr><td><code>repository_candidates</code></td><td>Cheap metadata, classification, trend components, tier, refresh date.</td><td>Unique github_id, full_name, and optional repository link.</td></tr>
+    <tr><td><code>collection_memberships</code></td><td>Candidate rank, score, selection within a collection.</td><td>Composite collection + candidate key.</td></tr>
+    <tr><td><code>ingestion_jobs</code></td><td>Type/status/priority/schedule, lease, attempts, payload, error.</td><td>Unique dedupe key; explicit lifecycle timestamps.</td></tr>
+    <tr><td><code>repository_sync_states</code></td><td>Incremental watermarks and conditional headers by resource.</td><td>Composite repository + resource key.</td></tr>
+    <tr><td><code>external_repository_activity</code></td><td>Compact hourly event counters and weighted total.</td><td>Composite candidate + hour; retained 90 days by default.</td></tr>
+    <tr><td><code>gh_archive_files</code></td><td>Hour status, projection version, event/repo/byte counts, errors.</td><td>One ledger row per archive hour.</td></tr>
+    <tr><td><code>collector_state</code></td><td>Small JSON operational facts such as GitHub rate budget.</td><td>String key upsert.</td></tr>
+    <tr><td><code>admin_audit_log</code></td><td>Actor/action/target/outcome/remote address/details.</td><td>Append-only by application convention; excludes secrets.</td></tr>
+  </table>
+  <div class="callout warn"><b>Do not “clean up” old job rows casually.</b> The queue is also an operational ledger. Migration 0008 removes duplicate schedule/maintenance jobs and adds a partial unique index for active equivalents.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Storage / 04</div><h1>Canonical catalog, search, and Scout tables</h1>
+  <table class="tight"><tr><th>Table</th><th>Payload</th><th>Lifecycle</th></tr>
+    <tr><td><code>catalog_repositories</code></td><td>Identity, metadata, membership flags, classification, component/selection scores, Scout pointer fields, excerpt, provenance JSON, deep link.</td><td>Upserted from broad discovery and deep repository sync.</td></tr>
+    <tr><td><code>repository_search_documents</code></td><td>Name, owner, description, topics text, language/license, README text.</td><td>One row per catalog repository; lexical search source.</td></tr>
+    <tr><td><code>repository_signal_snapshots</code></td><td>Stars/forks/issues/watchers, velocity score, source.</td><td>Canonical observed time series; separate from legacy snapshots.</td></tr>
+    <tr><td><code>repository_embeddings</code></td><td>Version, model, <code>vector(1536)</code>, timestamps.</td><td>Regenerated when content/model/version changes.</td></tr>
+    <tr><td><code>scout_assessments</code></td><td>Promise, quantitative and AI scores, confidence, rationale, facts, risk flags, evidence refs, provider identity, expiry/current flag.</td><td>Versioned history; one current logical assessment per repo by service convention.</td></tr>
+    <tr><td><code>repository_provenance</code></td><td>Field, source, observed time, details.</td><td>Evidence lineage records.</td></tr>
+    <tr><td><code>query_embedding_cache</code></td><td>Normalized query + model → JSON vector.</td><td>Avoids repeated provider calls; composite key.</td></tr>
+  </table>
+  <div class="callout"><b>Vector dimensionality is schema-bound.</b> The model column is <code>Vector(1536)</code>. Changing <code>AI_EMBEDDING_DIMENSION</code> alone is insufficient; update migration, model, provider expectations, stored rows, and search tests together.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Analytics / 01</div><h1>Analytics execution and stored explanation</h1>
+  <p><code>calculate_metrics(session, repo, window_days=30)</code> compares a current window with the immediately preceding equal window, then appends a <code>MetricSnapshot</code>.</p>
+  <div class="grid2">
+    <div><h3>Queries performed</h3><ul><li>Human vs known-bot commit authors.</li><li>PR creation and resolution/merge timestamps.</li><li>Issue creation and close timestamps.</li><li>Stable releases only.</li><li>Recent contributors or all-time fallback.</li><li>Repository snapshot history and freshness maxima.</li></ul></div>
+    <div><h3>Stored component groups</h3><ul><li><code>methodology_version: 3</code></li><li><code>momentum</code>, <code>health</code>, <code>concentration</code></li><li><code>velocity</code>, <code>responsiveness</code>, <code>community</code></li><li><code>freshness</code>, <code>growth</code></li><li><code>assessment</code>, <code>data_quality</code></li></ul></div>
+  </div>
+  <h3>Bot heuristic</h3><p>Logins ending in <code>[bot]</code> and the explicit values <code>dependabot</code>, <code>dependabot-preview</code>, <code>github-actions</code>, and <code>pre-commit-ci</code> are automation. Bot commits are excluded from human momentum/health inputs but stored as volume and share.</p>
+  <h3>Assessment status</h3><table class="tight"><tr><td>Archived</td><td>Repository flag is archived.</td></tr><tr><td>Dormant</td><td>No commits/PRs and last commit absent or &gt;90 days.</td></tr><tr><td>Cooling</td><td>Momentum &lt;45 or commit change &lt;−25%.</td></tr><tr><td>Advancing</td><td>Momentum and health both ≥65.</td></tr><tr><td>Stable</td><td>All other cases.</td></tr></table>
+</section>
+
+<section class="page">
+  <div class="kicker">Analytics / 02</div><h1>Momentum score</h1>
+  <p class="lede">Question: is development and community activity accelerating? Every component is clamped to 0–100.</p>
+  <table><tr><th>Component</th><th>Transform</th><th>Weight</th></tr>
+    <tr><td>Star growth</td><td><code>50 + 50·tanh(star_rate·4)</code></td><td>25%</td></tr>
+    <tr><td>Contributor growth</td><td><code>50 + 50·tanh(contributor_rate·3)</code></td><td>20%</td></tr>
+    <tr><td>Commit acceleration</td><td><code>50 + 50·tanh(ratio_change(current, previous))</code></td><td>25%</td></tr>
+    <tr><td>PR acceleration</td><td>Same acceleration transform</td><td>20%</td></tr>
+    <tr><td>Release cadence</td><td><code>100·(1−exp(−releases_per_month/2))</code></td><td>10%</td></tr>
+  </table>
+  <h3>Ratio convention</h3><pre>ratio_change(current, previous):
+  previous &gt; 0  → (current − previous) / previous
+  previous = 0 and current &gt; 0 → +1.0
+  both zero → 0.0</pre>
+  <h3>Baseline handling</h3><p>Star and contributor growth use an actual snapshot at or before the start of the window. If none exists, both components are excluded and remaining weights re-normalize. If there is also no current commit, PR, or release evidence, momentum is explicitly forced to 0.</p>
+  <div class="callout warn"><b>Do not reconstruct historical stars.</b> GitHub REST returns current counts. Growth is valid only from observations collected over time.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Analytics / 03</div><h1>Community health score</h1>
+  <p class="lede">Question: is the community active, responsive, and able to ship? Scale features use diminishing returns so raw project size does not dominate.</p>
+  <table><tr><th>Component</th><th>Transform</th><th>Weight</th></tr>
+    <tr><td>Active human contributors</td><td><code>100·(1−exp(−contributors/12))</code></td><td>20%</td></tr>
+    <tr><td>Issue resolution</td><td><code>100·exp(−median_close_hours/(72·4))</code>; missing → 0</td><td>15%</td></tr>
+    <tr><td>PR merge time</td><td><code>100·exp(−median_merge_hours/(48·4))</code>; missing → 0</td><td>15%</td></tr>
+    <tr><td>PR merge rate</td><td>Merged / resolved PRs × 100</td><td>20%</td></tr>
+    <tr><td>Stable release cadence</td><td><code>100·(1−exp(−releases_per_month/2))</code></td><td>10%</td></tr>
+    <tr><td>Recent human commits</td><td><code>100·(1−exp(−commits_per_week/15))</code></td><td>20%</td></tr>
+  </table>
+  <p>Cycle-time cohorts are selected by <i>resolved during the window</i>, reducing recent-open cohort bias. Issue close time is not first-response time; PR merge time is not review latency. Acceptance rate can encode deliberate governance strictness, not only health.</p>
+  <div class="callout"><b>Evidence visibility:</b> the snapshot stores median hours plus merged, resolved-PR, and closed-issue sample sizes. A consumer should show those counts next to the score.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Analytics / 04</div><h1>Concentration, velocity, and confidence</h1>
+  <h3>Contributor-dependency proxy</h3><pre>top_1_share = largest contributor count / total
+top_3_share = three largest counts / total
+HHI = Σ(each contributor share²)
+risk = 100 × (0.45·top_1 + 0.25·top_3 + 0.30·HHI)
+effective_contributors = 1 / HHI</pre>
+  <p>Basis is recent human commits. If none exist, cumulative GitHub contribution counts are used and the basis is marked. This is not a literal bus factor: it does not know permissions, knowledge ownership, or succession.</p>
+  <div class="grid2">
+    <div class="card"><h3>Velocity payload</h3><p>Current/previous commits and PRs, merged PRs, issues opened/closed, net issue flow, stable releases, per-week/month normalized rates, and automated commit volume/share.</p></div>
+    <div class="card"><h3>Freshness payload</h3><p>Last commit/release timestamps and days since each. Repository dossier and assessment use these to avoid presenting stale evidence as current.</p></div>
+  </div>
+  <h3>Confidence score</h3><pre>min(100,
+  25
+  min(current evidence events, 150) / 150 × 50
+  min(snapshot span days, window days) / window days × 25)</pre>
+  <p>The 25-point base means “confidence” is a coarse coverage indicator, not statistical certainty. Sample sizes remain separate.</p>
+</section>
+
+<section class="page">
+  <div class="kicker">Catalog / 01</div><h1>Directory selection score</h1>
+  <p><span class="path">services/directory.py</span> computes a 0–100 score from broad evidence. The score selects directory membership; it is not the same as deep health or Scout promise.</p>
+  <table><tr><th>Component</th><th>Formula / behavior</th><th>Weight</th></tr>
+    <tr><td>Activity</td><td><code>min(100, 20 + activity_count·2.5)</code></td><td>35%</td></tr>
+    <tr><td>Popularity</td><td><code>min(100, log1p(stars)·8 + log1p(forks)·4)</code></td><td>30%</td></tr>
+    <tr><td>Freshness</td><td><code>max(0, 100 − days_since_push)</code>; missing defaults 20</td><td>20%</td></tr>
+    <tr><td>Maintenance metadata</td><td>50 base +20 license +15 meaningful description +15 at least two topics</td><td>15%</td></tr>
+  </table>
+  <p>The catalog row also stores individual <code>activity_score</code>, <code>popularity_score</code>, <code>freshness_score</code>, and <code>maintenance_score</code> fields. Selection then applies a language diversity cap to prevent one ecosystem from consuming more than 25% of target slots, followed by a fill pass.</p>
+  <div class="callout warn"><b>Current implementation nuance:</b> some discovery upserts seed component/selection scores with constants or simplified values, while deep sync seeds stronger values. If revising selection quality, trace every writer of <code>CatalogRepository.selection_score</code>, not only <code>calculate_selection_score</code>.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Scout / 01</div><h1>Scout promise scoring</h1>
+  <p class="lede">Scout seeks promising active software with no minimum star threshold. It combines deterministic evidence (70%) and structured provider evaluation (30%).</p>
+  <table class="tight"><tr><th>Quantitative component</th><th>Construction</th></tr>
+    <tr><td>Adoption acceleration</td><td>20 base + 15/star event + 10/fork event + bounded log-star term.</td></tr>
+    <tr><td>Development cadence</td><td>30 base + 3/push event + 5/PR event.</td></tr>
+    <tr><td>Freshness</td><td>100 − 1.5 per day since push; missing 20.</td></tr>
+    <tr><td>Contributor breadth</td><td>25 base + forks, PR events, issue events.</td></tr>
+    <tr><td>Release activity</td><td>20 base + 35/release event.</td></tr>
+    <tr><td>Maintenance responsiveness</td><td>50 base; deep merged/closed evidence can raise it.</td></tr>
+  </table>
+  <pre>quantitative = .25 adoption + .20 cadence + .15 freshness
+             + .15 breadth + .10 releases + .15 maintenance
+promise      = .70 quantitative + .30 provider_overall_score</pre>
+  <p>Separate confidence accumulates evidence presence: description .20, language .15, license .15, ≥2 topics .15, any recent events .20, ≥5 stars .15; bounded to 0.20–1.00.</p>
+  <p>Guardrails exclude forks, archived projects, known non-software classifications, and projects inactive for more than 180 days. Assessments expire after seven days and retain provider/prompt identity plus evidence references.</p>
+</section>
+
+<section class="page">
+  <div class="kicker">Scout / 02</div><h1>AI provider contract and graceful degradation</h1>
+  <div class="grid2">
+    <div><h3>Abstract interface</h3><p><code>AIProvider</code> exposes embedding generation, structured Scout evaluation, availability, and model identity. <code>ScoutAIEvaluation</code> requires an overall score, breakdown, rationale, surfaced reason, facts, uncertainty, risks, model, and prompt version.</p><h3>Hosted provider</h3><p><code>OpenAIProvider</code> uses the OpenAI-compatible base URL, bearer key, embedding endpoint, and chat-completions JSON response. Default base URL targets Google’s OpenAI-compatible Gemini endpoint.</p></div>
+    <div><h3>Fallback provider</h3><p>When no effective key exists or provider access fails in supported paths, deterministic heuristics generate embeddings/evaluation behavior. The v2 health route reports degraded status and <code>semantic_available</code> tells search consumers what ran.</p><h3>Factory</h3><p><code>get_ai_provider</code> selects hosted behavior only when <code>GEMINI_API_KEY</code> or <code>AI_API_KEY</code> is configured; Gemini key wins.</p></div>
+  </div>
+  <div class="callout"><b>Design consequence:</b> the system remains usable without hosted AI. Lexical search, broad catalog, deep metrics, and deterministic Scout evidence continue. Never make core read availability depend on provider credentials.</div>
+  <div class="callout warn"><b>Naming nuance:</b> class/file names say OpenAI because the protocol is OpenAI-compatible; the configured default evaluation model is <code>gemini-3.8-flash</code>.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Search / 01</div><h1>Hybrid search and reciprocal rank fusion</h1>
+  <img class="diagram" src="diagrams/search.svg" alt="Hybrid search pipeline">
+  <div class="grid2">
+    <div><h3>Lexical branch</h3><p>Searches normalized catalog text across full name, name, owner, description, topics, language/license, and README document fields. Structured filters are applied in SQL.</p></div>
+    <div><h3>Semantic branch</h3><p>Normalizes query, consults <code>query_embedding_cache</code>, requests an embedding if needed, and ranks catalog vectors by pgvector distance.</p></div>
+  </div>
+  <p>Rank lists combine through weighted reciprocal rank fusion with default <code>k=60</code>. Pagination uses a URL-safe base64 encoding of an offset. Responses include interpreted filters, rationale, evidence freshness, and an explicit semantic-availability flag.</p>
+  <div class="callout warn"><b>Cursor semantics:</b> the cursor is opaque to clients but currently offset-based, not keyset-based. Large/mutating result sets can shift between pages; a future keyset migration would be an API behavior change.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">API / 01</div><h1>API architecture and conventions</h1>
+  <div class="grid2">
+    <div class="card"><h3>Mounts</h3><ul><li><code>/health</code>: process liveness.</li><li><code>/api/v1</code>: legacy repositories, analytics, collection, admin.</li><li><code>/api/v2</code>: canonical directory, profile, search, Scout, facets, health.</li><li>Via Caddy, prepend <code>/backend</code>.</li></ul></div>
+    <div class="card"><h3>Session and errors</h3><p>Async session dependency is request-scoped. Missing repositories produce 404; invalid parameters produce FastAPI 422. Most read responses are Pydantic-shaped. Admin failures use 401/403/409 as appropriate.</p></div>
+  </div>
+  <h3>Conventions</h3><ul><li>All timestamps are timezone-aware ISO 8601 externally.</li><li>Ranking and score ranges are 0–100; Scout confidence is 0–1.</li><li>v2 lists return envelopes with <code>items</code>, <code>next_cursor</code>, and <code>total_count</code>.</li><li>Frontend requests use <code>cache: "no-store"</code>.</li><li>OpenAPI metadata advertises API version 0.2.0; Python package version is 0.1.0.</li><li>Global response headers deny framing and sniffing, restrict referrers/permissions, and constrain CSP frame/base behavior.</li></ul>
+  <h3>Client base resolution</h3><pre>browser:        /backend
+SSR in Compose: API_INTERNAL_URL=http://api:8000
+SSR local:      http://localhost:8001</pre>
+  <div class="callout"><b>Compatibility guidance:</b> keep v1 behavior stable for existing screens while adding canonical functionality to v2. If a type changes, update Pydantic schemas and <span class="path">frontend/lib/api.ts</span> in the same change.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">API / 02</div><h1>API v1 endpoint catalog</h1>
+  <table class="tight"><tr><th>Method and path</th><th>Purpose / key parameters</th></tr>
+    <tr><td><code>GET /repositories</code></td><td>Hydrated rows; search, tier, offset, limit≤500.</td></tr>
+    <tr><td><code>GET /repositories/{owner}/{repo}</code></td><td>One hydrated summary.</td></tr>
+    <tr><td><code>GET …/metrics</code></td><td>Latest score for window 7–365; optional refresh recalculates.</td></tr>
+    <tr><td><code>GET …/history</code></td><td>Observed snapshots; days≤3650.</td></tr>
+    <tr><td><code>GET …/contributors</code></td><td>Top contributor rows; limit≤100.</td></tr>
+    <tr><td><code>GET …/activity</code></td><td>Weekly commits, merged PRs, closed issues, releases; 1–104 weeks.</td></tr>
+    <tr><td><code>GET /rankings/{ranking}</code></td><td><code>momentum</code>, <code>health</code>, or concentration order; window and limit.</td></tr>
+    <tr><td><code>GET /collections</code></td><td>Collection policy and member counts.</td></tr>
+    <tr><td><code>GET /candidates</code></td><td>Filter legacy candidates by tier/language/class/search/eligible.</td></tr>
+    <tr><td><code>GET /trending</code></td><td>Highest legacy trend candidates.</td></tr>
+    <tr><td><code>GET /collector/overview</code></td><td>Tier/class/job/rate/archive/DB summary.</td></tr>
+    <tr><td><code>GET /collector/jobs</code></td><td>Recent job ledger, optional status.</td></tr>
+    <tr><td><code>POST /collector/schedule</code></td><td>Legacy mutation route; runs scheduling.</td></tr>
+    <tr><td><code>POST /collector/repositories</code></td><td>Queue/pin an <code>owner/repo</code>.</td></tr>
+    <tr><td><code>POST /collector/jobs/{id}/retry</code></td><td>Retry eligible job.</td></tr>
+  </table>
+  <div class="callout danger"><b>Security review point:</b> v1 exposes legacy collector mutation routes outside the <code>/admin</code> router. Before public deployment, verify their current dependencies and either protect or remove them; do not assume the admin chapter automatically covers these routes.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">API / 03</div><h1>API v2 endpoint catalog</h1>
+  <table><tr><th>Method and path</th><th>Contract</th></tr>
+    <tr><td><code>GET /repositories</code></td><td>Canonical directory envelope. Filters: language, license, tier, directory_only, star range. Lenses: developer/maintainer/investor. Sort: selection, stars, pushed, promise, activity, growth, health, name; order asc/desc; cursor; limit 1–100.</td></tr>
+    <tr><td><code>GET /repositories/{owner}/{repo}</code></td><td>Unified profile: catalog row, current Scout card, optional deep evidence (metric, contributors, history), provenance, README excerpt.</td></tr>
+    <tr><td><code>POST /search</code></td><td>Body: query, optional filters/cursor/limit. Returns fused items, interpreted filters, rationale, freshness, semantic status.</td></tr>
+    <tr><td><code>GET /scout</code></td><td>Current Scout feed with language, minimum promise, maximum stars, cursor, and limit controls.</td></tr>
+    <tr><td><code>GET /facets</code></td><td>Language, category, license facets plus evidence-level and freshness counts.</td></tr>
+    <tr><td><code>GET /health</code></td><td>Database and AI availability plus candidate/directory/deep counts and degraded features.</td></tr>
+  </table>
+  <h3>Lens metrics</h3><p>List rows include a computed <code>lens_metrics</code> object. The UI uses it to rename and reorder evidence for developer, maintainer, or investor/growth perspectives without duplicating the underlying catalog.</p>
+  <div class="callout"><b>Canonical read choice:</b> new repository discovery/profile features should usually start with v2. Use v1 only when deep historical analytics or legacy collector observability is the explicit need.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">API / 04</div><h1>Administration endpoint catalog</h1>
+  <table class="tight"><tr><th>Method and path</th><th>Authorization</th><th>Effect</th></tr>
+    <tr><td><code>POST /admin/auth/login</code></td><td>Credentials + rate limiter</td><td>Set signed cookie; return CSRF and expiry.</td></tr>
+    <tr><td><code>GET /admin/auth/session</code></td><td>Session cookie</td><td>Return current session details.</td></tr>
+    <tr><td><code>POST /admin/auth/logout</code></td><td>Full mutation checks</td><td>Clear cookie; audit sign-out.</td></tr>
+    <tr><td><code>GET /admin/summary</code></td><td>Session cookie</td><td>Detailed operations summary.</td></tr>
+    <tr><td><code>GET /admin/audit</code></td><td>Session cookie</td><td>Latest append-only audit records, limit≤500.</td></tr>
+    <tr><td><code>POST /admin/commands/{command}</code></td><td>Session + Origin + Fetch Metadata + CSRF</td><td>Allowlisted scheduler, reconcile, reclassify, or maintenance enqueue.</td></tr>
+    <tr><td><code>POST /admin/jobs/{id}/cancel</code></td><td>Full mutation checks</td><td>Conditional cancel of queued/failed job.</td></tr>
+  </table>
+  <h3>Allowlisted command names</h3><p><span class="tag">schedule</span><span class="tag">reconcile</span><span class="tag">reclassify</span><span class="tag">maintenance</span></p>
+  <p>Repository queueing and retry behavior are surfaced in the admin console through protected calls where implemented; no endpoint exposes shell, SQL, arbitrary job type, Docker socket, or raw environment data.</p>
+  <div class="callout"><b>Long-running guarantee:</b> HTTP commands enqueue work. They do not perform GitHub collection inside the request, preserving queue leases, retry policy, and rate-limit behavior.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Frontend / 01</div><h1>Web application structure</h1>
+  <table class="tight"><tr><th>Route</th><th>Rendering / primary component</th><th>Responsibility</th></tr>
+    <tr><td><code>/</code></td><td>Async server page + cards</td><td>Search entry, lenses, Scout preview, platform explanation.</td></tr>
+    <tr><td><code>/repositories</code></td><td>Server page → <code>RepositoryDirectory</code></td><td>Faceted canonical catalog, lens/sort/search controls.</td></tr>
+    <tr><td><code>/repositories/[owner]/[repo]</code></td><td>Async server dossier</td><td>Unified profile with deep/scout/evidence-aware sections.</td></tr>
+    <tr><td><code>/scout</code></td><td>Server shell → <code>ScoutFeed</code></td><td>Promise filters and expandable explanations.</td></tr>
+    <tr><td><code>/compare</code></td><td>Server seed → <code>CompareExplorer</code></td><td>Select and compare repositories.</td></tr>
+    <tr><td><code>/rankings</code></td><td>Server seed → <code>RankingWorkspace</code></td><td>Legacy metric ranking workspace.</td></tr>
+    <tr><td><code>/methodology</code></td><td>Static server content</td><td>Metric and evidence governance.</td></tr>
+    <tr><td><code>/collection</code></td><td><code>CollectorConsole</code></td><td>Read-only queue/source observability.</td></tr>
+    <tr><td><code>/admin</code></td><td><code>AdminConsole</code></td><td>Login and privileged controls.</td></tr>
+  </table>
+  <h3>Shared behavior</h3><p><code>AppNavigation</code> provides global search, links, API docs, admin, and product tour. <code>FirstRunTutorial</code> stores tutorial state in browser storage. <code>MotionShell</code> animates route entry. Tailwind defines a black/white chartreuse visual language; semantic status still needs text, not color alone.</p>
+  <h3>Data layer</h3><p><span class="path">frontend/lib/api.ts</span> is the central contract. Pages mix server fetching with client-side re-fetching. Errors generally degrade to empty/null presentation; changing this behavior should include explicit user-facing failure states.</p>
+</section>
+
+<section class="page dark">
+  <div class="kicker">Frontend / screenshot 01</div><h1>Home and discovery entry point</h1>
+  <img class="screen" src="assets/ui-home.png" alt="RepoTrajectory home page">
+  <p class="caption">Live capture, 1440×1100. The page leads with natural-language search, then developer/maintainer/growth lenses and Scout discoveries. Global navigation exposes the public research paths and separates admin access.</p>
+</section>
+
+<section class="page dark">
+  <div class="kicker">Frontend / screenshot 02</div><h1>Canonical repository directory</h1>
+  <img class="screen" src="assets/ui-repositories.png" alt="Repository directory">
+  <p class="caption">Live capture. <code>RepositoryDirectory</code> manages query, language/license/category/evidence filters, lens, sorting, pagination, and expandable repository evidence. Results come from v2 catalog endpoints.</p>
+</section>
+
+<section class="page dark">
+  <div class="kicker">Frontend / screenshot 03</div><h1>Scout discovery feed</h1>
+  <img class="screen" src="assets/ui-scout.png" alt="Scout repository discovery feed">
+  <p class="caption">Live capture. Cards surface promise score, confidence, rationale, supporting facts, uncertainty, and risks. The feed is a decision aid; the explanation payload is as important as rank.</p>
+</section>
+
+<section class="page dark">
+  <div class="kicker">Frontend / screenshot 04</div><h1>Repository comparison</h1>
+  <img class="screen" src="assets/ui-compare.png" alt="Repository comparison screen">
+  <p class="caption">Live capture. <code>CompareExplorer</code> lets the user choose repositories and aligns metadata and analytical signals. Empty state is intentionally useful rather than preselecting a potentially misleading comparison.</p>
+</section>
+
+<section class="page dark">
+  <div class="kicker">Frontend / screenshot 05</div><h1>Unified repository dossier</h1>
+  <img class="screen" src="assets/ui-repo-detail.png" alt="Repository dossier">
+  <p class="caption">Live capture for <code>fastapi/fastapi</code>. The dossier merges catalog identity, Scout evidence, optional deep metrics, historical snapshots, contributors, README excerpt, and provenance. Missing deep evidence is represented explicitly.</p>
+</section>
+
+<section class="page dark">
+  <div class="kicker">Frontend / screenshot 06</div><h1>Methodology governance</h1>
+  <img class="screen" src="assets/ui-methodology.png" alt="Methodology page">
+  <p class="caption">Live capture. This page makes scoring weights, evidence assumptions, caveats, and status semantics accessible to users. Any formula change should update pure metric code, tests, this page, and <code>docs/metrics.md</code> together.</p>
+</section>
+
+<section class="page dark">
+  <div class="kicker">Frontend / screenshot 07</div><h1>Collection observability</h1>
+  <img class="screen" src="assets/ui-collection.png" alt="Collection status console">
+  <p class="caption">Live capture. The public collection screen is read-only and summarizes tier/classification distribution, durable jobs, archive processing, rate budget, database footprint, and latest completion.</p>
+</section>
+
+<section class="page dark">
+  <div class="kicker">Frontend / screenshot 08</div><h1>Privileged administration</h1>
+  <img class="screen" src="assets/ui-admin.png" alt="Administration login">
+  <p class="caption">Live capture of the unauthenticated boundary. Credentials are never embedded in this document. After login, the console offers allowlisted queue/maintenance controls and audit inspection.</p>
+</section>
+
+<section class="page">
+  <div class="kicker">Security / 01</div><h1>Security boundary and threat controls</h1>
+  <table><tr><th>Threat</th><th>Control</th></tr>
+    <tr><td>Credential theft from browser storage</td><td>Eight-hour HMAC-signed session in HttpOnly, SameSite=Strict cookie; password/session/CSRF never in local storage.</td></tr>
+    <tr><td>Password disclosure</td><td>PBKDF2-HMAC-SHA256, 600,000 iterations, random 128-bit salt; setup writes only hash.</td></tr>
+    <tr><td>CSRF / cross-site mutation</td><td>Session-bound random CSRF header, exact Origin/Referer allowlist, Fetch Metadata rejection.</td></tr>
+    <tr><td>Brute force</td><td>Five rejected logins per observed client address trigger 15-minute rolling lockout.</td></tr>
+    <tr><td>Privilege escalation</td><td>Fixed command allowlist; no shell, SQL, Docker socket, or arbitrary job submission.</td></tr>
+    <tr><td>Race with worker</td><td>Status-conditional cancel/retry.</td></tr>
+    <tr><td>Secret leakage in audit</td><td>Structured audit excludes passwords, tokens, CSRF, GitHub/AI keys, signing secret.</td></tr>
+    <tr><td>Clickjacking/sniffing</td><td>DENY frame, nosniff, no-referrer, permissions restrictions, CSP.</td></tr>
+  </table>
+  <div class="callout danger"><b>Deployment boundary:</b> local defaults use loopback HTTP and <code>ADMIN_SECURE_COOKIES=false</code>. For HTTPS exposure, set secure cookies and exact HTTPS allowed origins; replace default database credentials and conduct a review of legacy v1 mutation routes.</div>
+  <p>Use the least-privileged read-only GitHub token. Public collection needs GET access only; never grant repository deletion, hooks, workflow, packages, organization administration, or broad write scopes.</p>
+</section>
+
+<section class="page">
+  <div class="kicker">Security / 02</div><h1>Authentication and CSRF flow</h1>
+  <img class="diagram" src="diagrams/auth.svg" alt="Admin authentication flow">
+  <div class="grid2">
+    <div><h3>Token payload</h3><p>Session contains username, issue/expiry times, and CSRF value. It is base64-url encoded and HMAC authenticated. Decode verifies structure, signature with constant-time comparison, username, and expiration.</p></div>
+    <div><h3>Rotation</h3><p><code>./run.sh admin-password</code> prompts without echo, hashes the new password, generates a new session-signing secret, writes <code>.env</code> mode 0600, and invalidates all earlier sessions.</p></div>
+  </div>
+  <div class="callout"><b>Cookie settings:</b> HttpOnly, SameSite=Strict, configured Secure flag, bounded Max-Age. Admin responses receive <code>Cache-Control: no-store</code>.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Configuration / 01</div><h1>Core, GitHub, and collection settings</h1>
+  <table class="tight"><tr><th>Environment / field</th><th>Default</th><th>Meaning</th></tr>
+    <tr><td><code>DATABASE_URL</code></td><td>localhost:15432 dev URL</td><td>Async PostgreSQL connection; Compose overrides host.</td></tr>
+    <tr><td><code>GITHUB_TOKEN</code></td><td>none</td><td>Read-only token; needed for practical quota.</td></tr>
+    <tr><td><code>GITHUB_API_URL</code></td><td>api.github.com</td><td>REST base; injectable for tests.</td></tr>
+    <tr><td><code>GITHUB_REQUEST_INTERVAL_SECONDS</code></td><td>0.15</td><td>Serialized minimum spacing per client.</td></tr>
+    <tr><td><code>GITHUB_RATE_LIMIT_RESERVE</code></td><td>100</td><td>Preserved budget.</td></tr>
+    <tr><td><code>INGESTION_BOOTSTRAP_DAYS</code></td><td>180</td><td>Initial commit horizon.</td></tr>
+    <tr><td><code>INGESTION_RELEASE_DAYS</code></td><td>730</td><td>Release horizon.</td></tr>
+    <tr><td><code>INGESTION_*_LIMIT</code></td><td>200 / 5000 / 3000 / 3000 / 500</td><td>Contributors, commits, issues, PRs, releases.</td></tr>
+    <tr><td><code>COLLECTOR_POLL_SECONDS</code></td><td>10</td><td>Idle loop interval.</td></tr>
+    <tr><td><code>COLLECTOR_LEASE_MINUTES</code></td><td>30</td><td>Worker-death recovery threshold.</td></tr>
+    <tr><td><code>COLLECTOR_CANDIDATE_LIMIT</code></td><td>2000</td><td>Legacy policy target/ceiling.</td></tr>
+    <tr><td><code>COLLECTOR_ACTIVE_LIMIT</code></td><td>250</td><td>Legacy recurring hydration cohort.</td></tr>
+    <tr><td><code>COLLECTOR_ACTIVE_REFRESH_HOURS</code></td><td>24</td><td>Recurring deep refresh cadence.</td></tr>
+    <tr><td><code>COLLECTOR_CANDIDATE_REFRESH_HOURS</code></td><td>168</td><td>Candidate metadata cadence.</td></tr>
+  </table>
+</section>
+
+<section class="page">
+  <div class="kicker">Configuration / 02</div><h1>Discovery, AI, search, and capacity settings</h1>
+  <table class="tight"><tr><th>Environment / field</th><th>Default</th><th>Operational impact</th></tr>
+    <tr><td><code>DISCOVERY_LANGUAGES</code></td><td>Python, TS, JS, Go, Rust, Java</td><td>Legacy queries and scheduled canonical shards.</td></tr>
+    <tr><td><code>DISCOVERY_MIN_STARS</code></td><td>500</td><td>Legacy Search intake only.</td></tr>
+    <tr><td><code>DISCOVERY_PUSHED_WITHIN_DAYS</code></td><td>180</td><td>Freshness eligibility.</td></tr>
+    <tr><td><code>GH_ARCHIVE_HOURS_BACK / LAG_HOURS</code></td><td>6 / 3</td><td>Hourly replay window and source delay.</td></tr>
+    <tr><td><code>GH_ARCHIVE_TOP_REPOSITORIES_PER_HOUR</code></td><td>500</td><td>Projection bound.</td></tr>
+    <tr><td><code>GH_ARCHIVE_RETENTION_DAYS</code></td><td>90</td><td>Activity/file ledger retention.</td></tr>
+    <tr><td><code>AI_BASE_URL</code></td><td>Gemini OpenAI-compatible URL</td><td>Provider endpoint.</td></tr>
+    <tr><td><code>GEMINI_API_KEY / AI_API_KEY</code></td><td>none</td><td>Hosted provider; Gemini takes precedence.</td></tr>
+    <tr><td><code>AI_EVALUATION_MODEL</code></td><td>gemini-3.8-flash</td><td>Scout structured judgment.</td></tr>
+    <tr><td><code>AI_EMBEDDING_MODEL</code></td><td>text-embedding-3-small</td><td>Semantic search model label.</td></tr>
+    <tr><td><code>DIRECTORY_LIMIT / DEEP_COHORT_LIMIT</code></td><td>10000 / 500</td><td>Canonical membership targets.</td></tr>
+    <tr><td><code>CANDIDATE_POOL_LIMIT / RETENTION_DAYS</code></td><td>50000 / 90</td><td>Broad-pool bounds.</td></tr>
+    <tr><td><code>DIRECTORY_LANGUAGE_CAP</code></td><td>0.25</td><td>Maximum initial share per language.</td></tr>
+    <tr><td><code>SCOUT_DAILY_EVAL_LIMIT</code></td><td>100</td><td>Daily assessment workload.</td></tr>
+    <tr><td><code>SEARCH_RRF_K / SEARCH_DEFAULT_LIMIT</code></td><td>60 / 50</td><td>Fusion damping and response size.</td></tr>
+  </table>
+  <p class="caption">The checked-in <code>.env.example</code> is the operator template. This book intentionally omits runtime credential values.</p>
+</section>
+
+<section class="page">
+  <div class="kicker">Development / 01</div><h1>Local development workflow</h1>
+  <h3>Recommended full stack</h3><pre>cp .env.example .env
+# set a read-only GITHUB_TOKEN
+./run.sh
+
+# lifecycle
+./run.sh logs
+./run.sh down
+./run.sh admin-password</pre>
+  <p><code>run.sh</code> checks host ports 10100–10110, remembers/reuses the current app port, builds/starts Compose, waits for readiness, and prints UI, collection, admin, and API-doc links.</p>
+  <h3>Split-process backend development</h3><pre>docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres
+cd backend
+python -m venv .venv && source .venv/bin/activate
+pip install -e '.[dev]'
+alembic upgrade head
+uvicorn app.main:app --reload --port 8001
+
+# second shell
+python -m app.cli collector</pre>
+  <h3>Frontend</h3><pre>cd frontend
+npm install
+npm run dev</pre>
+  <p>The development proxy sends <code>/backend</code> to <code>localhost:8001</code>. PostgreSQL is exposed only by the dev override on host port 15432.</p>
+  <div class="callout"><b>Before coding:</b> check <code>git status --short</code>, preserve unrelated user changes, run the smallest relevant tests, and use Alembic for schema changes.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Deployment / 01</div><h1>Docker, startup, and proxy behavior</h1>
+  <div class="grid2">
+    <div><h3>Startup order</h3><ol><li>PostgreSQL and Redis reach health.</li><li>API runs <code>alembic upgrade head</code>, then Uvicorn.</li><li>Collector waits for healthy API.</li><li>Web depends on API health.</li><li>Caddy routes after web/API exist.</li></ol></div>
+    <div><h3>Network segmentation</h3><p>All services join <code>internal</code>; application services needing outbound access also join <code>public</code>. Only proxy publishes a host port. Database and API use Compose <code>expose</code>, not host <code>ports</code>.</p></div>
+  </div>
+  <h3>Caddy route contract</h3><pre>:80 {
+  handle_path /backend/* { reverse_proxy api:8000 }
+  handle { reverse_proxy web:3000 }
+}</pre>
+  <h3>Persistence</h3><p><code>postgres_data</code> holds the database, <code>backups_data</code> holds backup files, <code>redis_data</code> holds Redis state, and Caddy has data/config volumes. Stopping containers is recoverable; deleting volumes is destructive.</p>
+  <div class="callout warn"><b>Production hardening:</b> local database credentials are embedded in Compose for convenience. A public deployment needs external secret management, TLS, exact origins, secure cookies, monitoring, backup scheduling, and explicit network/firewall policy.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Operations / 01</div><h1>CLI, observability, and routine operations</h1>
+  <table class="tight"><tr><th>Command</th><th>Use</th></tr>
+    <tr><td><code>python -m app.cli schedule</code></td><td>Run one scheduler tick.</td></tr>
+    <tr><td><code>… collector [--once]</code></td><td>Continuous worker or one job.</td></tr>
+    <tr><td><code>… collector-status</code></td><td>Queue, archive, DB, rate overview.</td></tr>
+    <tr><td><code>… enqueue owner/repo</code></td><td>Pin and prioritize one repository.</td></tr>
+    <tr><td><code>… ingest owner/repo</code></td><td>Immediate one-off ingestion.</td></tr>
+    <tr><td><code>… ingest-config ../repositories.yml</code></td><td>Ingest configured list.</td></tr>
+    <tr><td><code>… classify-candidates</code></td><td>Reapply transparent eligibility.</td></tr>
+    <tr><td><code>… reconcile-directory</code></td><td>Rebuild canonical memberships.</td></tr>
+    <tr><td><code>… scout-eval --limit N</code></td><td>Run Scout assessments.</td></tr>
+    <tr><td><code>… generate-embeddings --limit N</code></td><td>Populate catalog vectors.</td></tr>
+    <tr><td><code>… discover-sharded …</code></td><td>Run explicit catalog shard.</td></tr>
+    <tr><td><code>… seed-benchmark / benchmark-latencies</code></td><td>Create/measure scale scenarios.</td></tr>
+  </table>
+  <h3>Watch first</h3><p>Oldest queued age, failed jobs and errors, latest completion, GitHub remaining/reset, last GH Archive hour and failure, database size/write latency, directory/deep counts, API latency, AI degradation, snapshot span, and evidence sample sizes.</p>
+  <div class="callout"><b>Normal recovery:</b> restart the collector. Leases expire, jobs requeue, upserts tolerate replay, and projections replace atomically.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Operations / 02</div><h1>Backup, restore, and disaster recovery</h1>
+  <div class="grid2">
+    <div><h3>Backup script</h3><p><span class="path">scripts/backup.sh</span> produces timestamped compressed custom-format <code>pg_dump</code> files in <code>/backups/daily</code>. Sundays are copied to weekly.</p><ul><li>Daily retention: 7 days.</li><li>Weekly retention: 28 days.</li><li>Defaults target Compose PostgreSQL.</li></ul></div>
+    <div><h3>Restore script</h3><p><span class="path">scripts/restore.sh</span> accepts a backup and optional <code>--rehearsal</code>. Rehearsal creates an isolated database, restores, checks key table counts, and drops it.</p><ul><li><code>--clean --if-exists</code>.</li><li><code>--no-owner --no-acl</code>.</li><li>Verifies catalog/repo/embedding/scout counts.</li></ul></div>
+  </div>
+  <h3>Recovery objectives by data class</h3><table class="tight"><tr><th>Data</th><th>Recoverability</th></tr><tr><td>GitHub entities</td><td>Replayable within current API availability and configured bounds.</td></tr><tr><td>GH Archive compact hours</td><td>Replayable from public archive; algorithm version controls replacement.</td></tr><tr><td>Observed historical snapshots</td><td>Not reconstructable exactly after loss; backups matter.</td></tr><tr><td>Job/audit history</td><td>Operational evidence; not fully recreated from sources.</td></tr><tr><td>Embeddings/Scout</td><td>Regenerable if provider/config remains available.</td></tr></table>
+  <div class="callout danger"><b>Restore-script caveat:</b> <code>pg_restore … || true</code> can mask restore errors. A production recovery procedure should inspect command status/logs and validate more than four counts before declaring success.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Quality / 01</div><h1>Tests and quality gates</h1>
+  <div class="grid2">
+    <div><h3>Backend test coverage</h3><ul><li>Pure metric transforms and missing baselines.</li><li>GitHub retries, rate limits, pagination.</li><li>Discovery aggregation/classification.</li><li>Directory selection/diversity.</li><li>Hybrid search fusion, fallback, cache.</li><li>Scout scoring and guardrails.</li><li>v2 list/profile/scout/facets/health.</li><li>Admin password/session/origin behavior.</li><li>Migration 0007 expectations.</li></ul></div>
+    <div><h3>Primary gates</h3><pre>cd backend
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+  pytest -p pytest_asyncio.plugin
+ruff check app tests alembic/versions
+mypy app
+
+cd ../frontend
+npm run build
+
+cd ..
+docker compose config --quiet</pre></div>
+  </div>
+  <h3>Test architecture</h3><p>Fixtures use async SQLite for fast service/API isolation and dependency override. PostgreSQL-specific behavior—pgvector, SKIP LOCKED, dialect inserts, indexes, and migration execution—requires integration validation against the real Compose database.</p>
+  <h3>Generation-time verification</h3><table class="tight"><tr><th>Gate</th><th>Observed result on 2026-09-05</th></tr><tr><td>Frontend production build</td><td><b>Pass</b>; Next.js compiled, type-checked, and generated all routes.</td></tr><tr><td>Compose configuration</td><td><b>Pass</b>.</td></tr><tr><td>Focused admin-auth tests</td><td><b>3 passed</b>.</td></tr><tr><td>Full backend pytest</td><td><b>Incomplete</b>; advanced four tests, then exceeded a 120-second diagnostic timeout.</td></tr><tr><td>Ruff / strict MyPy</td><td><b>Failing baseline</b>: 120 lint findings; 9 type errors in 4 source files.</td></tr></table>
+  <div class="callout warn"><b>Current gap:</b> there is no dedicated frontend unit/e2e suite in the repository. Build catches TypeScript/render failures, while screenshots and manual browser checks cover workflows. Add focused interaction tests before high-risk UI refactors.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Runtime / observed 2026-09-05</div><h1>Live local stack snapshot</h1>
+  <p class="lede">Observed from the running Compose stack. These values demonstrate scale and health; they are not configuration constants.</p>
+  <div class="facts"><div class="card"><span class="label">Catalog candidates</span><div class="big-number">33,940</div></div><div class="card"><span class="label">Directory</span><div class="big-number">1,496</div></div><div class="card"><span class="label">Deep cohort</span><div class="big-number">595</div></div><div class="card"><span class="label">Hydrated repos</span><div class="big-number">796</div></div></div>
+  <table class="tight"><tr><th>Signal</th><th>Observed value</th></tr>
+    <tr><td>v2 health</td><td>Degraded only because hosted AI credentials were not configured; fallback heuristic active; database connected.</td></tr>
+    <tr><td>Legacy tiers</td><td>250 active, 37,499 candidate, 1 pinned.</td></tr>
+    <tr><td>Jobs</td><td>6,005 completed; 467 cancelled; 4 failed; no queued oldest timestamp at observation.</td></tr>
+    <tr><td>GH Archive</td><td>119 hours; 9,712,772 events; 2,046,718,076 compressed bytes; 59,500 retained activity rows.</td></tr>
+    <tr><td>Database size</td><td>629,963,799 bytes (~601 MiB).</td></tr>
+    <tr><td>GitHub budget snapshot</td><td>Limit 5,000; remaining 4,821; used 179 in reported window; process request counter 1,180.</td></tr>
+    <tr><td>Collection</td><td><code>oss-libraries</code>, enabled; policy 2,000 candidates / 250 active / 24-hour refresh; observed membership count exceeded nominal candidate_limit.</td></tr>
+  </table>
+  <div class="callout warn"><b>Model reconciliation:</b> v2 deep count (595), configured target (500), and legacy hydrated count (796) differ because they measure different tables/flags and current state can drift between reconciliations. Do not compare them as identical KPIs.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Risk register</div><h1>Limits, ambiguity, and technical debt</h1>
+  <table class="tight"><tr><th>Risk / limitation</th><th>Impact and mitigation</th></tr>
+    <tr><td>Historical growth begins at first observation</td><td>Early momentum is provisional; expose history availability and snapshot span.</td></tr>
+    <tr><td>Default-branch commits only</td><td>Activity can miss branch/monorepo workflows; describe scope.</td></tr>
+    <tr><td>Identity and bot heuristics</td><td>Contributor breadth/automation can be wrong; keep raw components and basis.</td></tr>
+    <tr><td>Cycle-time semantics</td><td>Not response/review time; avoid stronger labels.</td></tr>
+    <tr><td>Dual legacy/canonical models</td><td>Counts and membership can diverge; define source-of-truth per feature.</td></tr>
+    <tr><td>Redis provisioned but unused</td><td>Operational complexity without current application value; document or remove deliberately.</td></tr>
+    <tr><td>Legacy v1 mutation routes</td><td>Potential security inconsistency; require explicit protection audit before exposure.</td></tr>
+    <tr><td>Offset cursor</td><td>Mutation can reorder pages; consider keyset pagination.</td></tr>
+    <tr><td>Fixed vector dimension</td><td>Model changes need migration/re-embedding.</td></tr>
+    <tr><td>Frontend lacks test suite</td><td>Interaction regressions rely on build/manual checks.</td></tr>
+    <tr><td>Restore masks pg_restore exit</td><td>False recovery success; tighten failure handling and validation.</td></tr>
+    <tr><td>External source quotas/outages</td><td>Backlog and stale evidence; preserve durable retries, degraded flags, freshness.</td></tr>
+  </table>
+  <div class="callout"><b>Product principle:</b> uncertainty should be displayed, not “fixed” by inventing neutral evidence or silently substituting stale values.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">Engineering / change recipes</div><h1>Safe extension playbooks</h1>
+  <div class="grid2 small-gap">
+    <div class="card"><h3>Add a collected GitHub field</h3><p>Update ORM + Alembic, GitHub payload mapping/upsert, Pydantic schema, catalog sync if public, TypeScript type/UI, tests, docs. Decide null and historical semantics.</p></div>
+    <div class="card"><h3>Add a metric</h3><p>Implement pure transform, build query inputs, version component JSON, store samples/coverage, expose API, document methodology/caveats, test zero/missing/extremes, update UI.</p></div>
+    <div class="card"><h3>Add a job type</h3><p>Define dedupe scope, priority, attempts, payload schema, scheduler/manual producer, worker branch, replay/idempotency, rate-limit behavior, audit/admin exposure, tests and observability.</p></div>
+    <div class="card"><h3>Add a v2 endpoint</h3><p>Add response schema, route with session dependency, service query, bounded filters/pagination, API tests, TypeScript contract/helper, loading/empty/error UI.</p></div>
+    <div class="card"><h3>Change AI model</h3><p>Check protocol and dimensions, bump embedding version, migrate vector size if needed, invalidate/regenerate embeddings/cache, preserve fallback, record model/prompt identity, latency-test.</p></div>
+    <div class="card"><h3>Change selection policy</h3><p>Keep component explanation, test diversity/bounds, reconcile both universes deliberately, preview membership churn, bump projection version if GH Archive fold changes.</p></div>
+  </div>
+  <h3>Minimum acceptance sequence</h3><pre>inspect writers/readers → make narrow change → migrate if needed
+→ run focused tests → run full backend gates → frontend build
+→ Compose config/health → inspect UI and operational telemetry</pre>
+  <div class="callout warn"><b>Never mutate generated/current evidence to hide a model inconsistency.</b> Fix the producing path, version the methodology if meaning changes, and let scheduled reconciliation/refresh repair state.</div>
+</section>
+
+<section class="page">
+  <div class="kicker">AI handoff / final</div><h1>Invariant checklist and file index</h1>
+  <div class="grid2">
+    <div><h3>Non-negotiable invariants</h3><ul class="checklist"><li>Use GitHub numeric ID as stable external identity.</li><li>Never persist raw GH Archive payloads.</li><li>Every collection dimension stays bounded.</li><li>Jobs are deduplicated, leased, retryable, and replay-safe.</li><li>Missing evidence remains explicit.</li><li>Scores retain components, samples, coverage, version.</li><li>Hosted AI remains optional.</li><li>Browser never receives source tokens/secrets.</li><li>Admin mutations require session + origin + CSRF.</li><li>Schema changes ship with Alembic.</li><li>Public API and TypeScript contracts change together.</li><li>UI labels do not overclaim metric meaning.</li></ul></div>
+    <div><h3>First file by question</h3><table class="tight"><tr><td>Config</td><td class="path">core/config.py</td></tr><tr><td>Schema</td><td class="path">db/models.py</td></tr><tr><td>Queue</td><td class="path">services/collector.py</td></tr><tr><td>Discovery</td><td class="path">services/discovery.py</td></tr><tr><td>Hydration</td><td class="path">services/ingestion.py</td></tr><tr><td>Metrics</td><td class="path">analytics/metrics.py<br>services/analytics.py</td></tr><tr><td>Catalog</td><td class="path">services/catalog.py<br>services/directory.py</td></tr><tr><td>Scout</td><td class="path">services/scout.py</td></tr><tr><td>Search</td><td class="path">services/search.py</td></tr><tr><td>HTTP</td><td class="path">api/routes.py<br>api/v2/routes.py</td></tr><tr><td>Security</td><td class="path">core/admin_auth.py<br>api/admin.py</td></tr><tr><td>Web client</td><td class="path">frontend/lib/api.ts</td></tr></table></div>
+  </div>
+  <div class="callout"><b>Final orientation sentence:</b> RepoTrajectory is a bounded, replayable evidence pipeline whose product value comes from preserving provenance and uncertainty while translating broad public repository activity into searchable, explainable, role-specific decisions.</div>
+  <p class="sourceline">Companion sources: README.md • docs/collector.md • docs/metrics.md • docs/administration.md • OpenAPI at /backend/docs</p>
+</section>
+
+</body>
+</html>

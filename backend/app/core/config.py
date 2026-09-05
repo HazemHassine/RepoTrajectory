@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     ai_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
     ai_api_key: str | None = None
     ai_enabled: bool = False
+    ai_max_concurrency: int = 1
+    ai_daily_request_limit: int = 100
+    ai_monthly_token_limit: int = 300000
+    ai_input_price_per_million: float | None = None
+    ai_output_price_per_million: float | None = None
     gemini_api_key: str | None = None
     ai_embedding_model: str = "text-embedding-3-small"
     ai_evaluation_model: str = "gemini-3.8-flash"
@@ -65,6 +70,7 @@ class Settings(BaseSettings):
     @property
     def effective_ai_api_key(self) -> str | None:
         return self.gemini_api_key or self.ai_api_key
+
     directory_limit: int = 10000
     candidate_pool_limit: int = 50000
     candidate_retention_days: int = 90
@@ -73,6 +79,15 @@ class Settings(BaseSettings):
     scout_daily_eval_limit: int = 100
     search_rrf_k: int = 60
     search_default_limit: int = 50
+    evidence_enabled: bool = True
+    evidence_cohort_limit: int = 200
+    evidence_retention_days: int = 180
+    evidence_items_per_repository: int = 200
+    evidence_refresh_hours: int = 24
+    evidence_cold_refresh_hours: int = 168
+    evidence_adoption_change_ratio: float = 0.5
+    evidence_adoption_min_delta: int = 1000
+    evidence_dormant_days: int = 180
 
     @property
     def discovery_language_list(self) -> list[str]:

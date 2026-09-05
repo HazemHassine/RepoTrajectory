@@ -1,10 +1,10 @@
 import base64
+import re
 from datetime import UTC, datetime
-import json
 from typing import Any
 
 import structlog
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -77,9 +77,7 @@ def _apply_sql_filters(query_stmt: Any, filters: dict[str, Any] | None) -> Any:
         return query_stmt
 
     if filters.get("language"):
-        query_stmt = query_stmt.where(
-            CatalogRepository.primary_language.ilike(filters["language"])
-        )
+        query_stmt = query_stmt.where(CatalogRepository.primary_language.ilike(filters["language"]))
     if filters.get("license"):
         query_stmt = query_stmt.where(CatalogRepository.license.ilike(filters["license"]))
     if filters.get("tier"):
@@ -113,7 +111,7 @@ async def hybrid_search(
     clean_query = query.strip()
     offset = decode_cursor(cursor)
     target_limit = min(max(limit, 1), 100)
-    fetch_candidates = min(200, (offset + target_limit) * 2)
+    fetch_candidates = 200  # Stable bounded ranking pool across cursor pages.
 
     lexical_ranks: dict[int, int] = {}
     vector_ranks: dict[int, int] = {}
@@ -127,11 +125,23 @@ async def hybrid_search(
             RepositorySearchDocument.github_id == CatalogRepository.github_id,
         )
         .where(
-            or_(
-                RepositorySearchDocument.full_name.ilike(f"%{clean_query}%"),
-                RepositorySearchDocument.description.ilike(f"%{clean_query}%"),
-                RepositorySearchDocument.topics_text.ilike(f"%{clean_query}%"),
-                RepositorySearchDocument.name.ilike(f"%{clean_query}%"),
+            and_(
+                *[
+                    or_(
+                        *[
+                            func.lower(column).contains(token, autoescape=True)
+                            for column in (
+                                RepositorySearchDocument.full_name,
+                                RepositorySearchDocument.description,
+                                RepositorySearchDocument.topics_text,
+                                RepositorySearchDocument.name,
+                                RepositorySearchDocument.primary_language,
+                                RepositorySearchDocument.readme_text,
+                            )
+                        ]
+                    )
+                    for token in re.findall(r"[\w-]+", clean_query.casefold())[:12]
+                ]
             )
         )
     )
@@ -195,7 +205,7 @@ async def hybrid_search(
             score += w_vector / (k + vector_ranks[gid])
         rrf_scores[gid] = score
 
-    sorted_gids = sorted(all_gids, key=lambda gid: rrf_scores[gid], reverse=True)
+    sorted_gids = sorted(all_gids, key=lambda gid: (-rrf_scores[gid], gid))
     total_matches = len(sorted_gids)
 
     # Apply pagination window
@@ -255,13 +265,11 @@ async def hybrid_search(
                 )
 
     next_cursor = (
-        encode_cursor(offset + target_limit)
-        if (offset + target_limit) < total_matches
-        else None
+        encode_cursor(offset + target_limit) if (offset + target_limit) < total_matches else None
     )
 
     rationale = (
-        f"Ranked via hybrid lexical full-text and semantic vector retrieval (RRF k={k})"
+        f"Ranked via hybrid lexical keywords and semantic vector retrieval (RRF k={k})"
         if semantic_available
         else "Ranked via lexical keyword retrieval (semantic retrieval offline/degraded)"
     )

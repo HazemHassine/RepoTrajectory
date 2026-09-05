@@ -35,6 +35,7 @@ from app.services.discovery import (
     probe_repository_candidate,
     reconcile_collection,
 )
+from app.services.evidence import collect_repository_evidence, prune_evidence
 from app.services.ingestion import RepositoryIngester
 from app.services.scout import run_daily_scout_batch
 
@@ -265,6 +266,24 @@ class CollectorScheduler:
             priority=-10,
             max_attempts=2,
         )
+        if self.settings.evidence_enabled:
+            cohort = (
+                await session.scalars(
+                    select(CatalogRepository.github_id)
+                    .where(CatalogRepository.is_deep.is_(True))
+                    .order_by(CatalogRepository.last_observed_at.desc())
+                    .limit(self.settings.evidence_cohort_limit)
+                )
+            ).all()
+            for github_id in cohort:
+                await enqueue_job(
+                    session,
+                    "collect_evidence",
+                    f"evidence:{github_id}:{day_key}",
+                    payload={"github_id": github_id},
+                    priority=20,
+                    max_attempts=3,
+                )
         await session.commit()
         summary = {"discovery": discovery, "refresh": refresh, "recovered": recovered}
         log.info("collector_schedule_tick", **summary)
@@ -421,10 +440,23 @@ class CollectorWorker:
                 s_min = int(job.payload.get("star_min", 0))
                 s_max = int(job.payload.get("star_max", 10))
                 await discover_github_sharded(
-                    session, self.github, self.settings, language=lang, star_min=s_min, star_max=s_max
+                    session,
+                    self.github,
+                    self.settings,
+                    language=lang,
+                    star_min=s_min,
+                    star_max=s_max,
                 )
             elif job.job_type == "maintenance":
                 await self._maintenance(session)
+            elif job.job_type == "collect_evidence":
+                if self.settings.evidence_enabled:
+                    await collect_repository_evidence(
+                        session,
+                        int(job.payload["github_id"]),
+                        self.github,
+                        self.settings,
+                    )
             else:
                 raise ValueError(f"unknown collector job type: {job.job_type}")
             await self._save_rate_state(session)
@@ -475,6 +507,7 @@ class CollectorWorker:
             await session.commit()
 
     async def _maintenance(self, session: AsyncSession) -> None:
+        await prune_evidence(session, self.settings)
         external_cutoff = datetime.now(UTC) - timedelta(
             days=self.settings.gh_archive_retention_days
         )

@@ -1,0 +1,16 @@
+digraph G {
+  graph [bgcolor="transparent", rankdir=LR, pad=.2, nodesep=.4, ranksep=.55];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=9.2, color="#384152", fillcolor="#151922", fontcolor="#f4f7fb", margin=".14,.09"];
+  edge [color="#8ea0b5", fontcolor="#aebdcb", fontname="Arial", fontsize=8, arrowsize=.6];
+  q [label="query + structured filters"];
+  norm [label="normalize / cache key"];
+  lex [label="PostgreSQL lexical rank\nname • owner • description\ntopics • README"];
+  emb [label="AI embedding\noptional + cached"];
+  sem [label="pgvector cosine rank"];
+  rrf [label="weighted reciprocal rank fusion\nk=60 by default", fillcolor="#27301c", color="#a6d800"];
+  filt [label="language/license/star filters"];
+  res [label="cursor page + rationale\nsemantic_available flag"];
+  q -> norm; norm -> lex; norm -> emb; emb -> sem; lex -> rrf; sem -> rrf; rrf -> filt -> res;
+  fallback [label="AI unavailable:\nlexical-only, still functional", fillcolor="#302b1d"];
+  emb -> fallback [style=dashed]; fallback -> rrf [style=dashed];
+}
