@@ -631,15 +631,26 @@ async def discover_github_repositories(
     session: AsyncSession,
     github: GitHubClient,
     settings: Settings,
-    language: str,
+    language: str | None = None,
+    topic: str | None = None,
+    max_results: int | None = None,
 ) -> int:
     now = datetime.now(UTC)
     pushed_after = (now - timedelta(days=settings.discovery_pushed_within_days)).date().isoformat()
-    query = (
-        f"is:public archived:false fork:false stars:>={settings.discovery_min_stars} "
-        f"pushed:>={pushed_after} language:{language}"
-    )
-    items = await github.search_repositories(query, settings.discovery_results_per_language)
+    parts = [
+        "is:public",
+        "archived:false",
+        "fork:false",
+        f"stars:>={settings.discovery_min_stars}",
+        f"pushed:>={pushed_after}",
+    ]
+    if language:
+        parts.append(f"language:{language}")
+    if topic:
+        parts.append(f"topic:{topic}")
+    query = " ".join(parts)
+    results_limit = max_results or settings.discovery_results_per_language
+    items = await github.search_repositories(query, results_limit)
     values = [value for item in items if (value := github_candidate_values(item, now))]
     if not values:
         return 0
@@ -702,7 +713,12 @@ async def discover_github_repositories(
         )
     )
     await session.commit()
-    log.info("github_discovery_completed", language=language, repositories=len(values))
+    log.info(
+        "github_discovery_completed",
+        language=language,
+        topic=topic,
+        repositories=len(values),
+    )
     return len(values)
 
 
@@ -727,7 +743,9 @@ async def persist_gh_archive_hour(
     for activity in result.repositories:
         if activity.full_name in deduped_candidates:
             existing_val = deduped_candidates[activity.full_name]
-            existing_val["source_score"] = max(existing_val["source_score"], activity.weighted_events)
+            existing_val["source_score"] = max(
+                existing_val["source_score"], activity.weighted_events
+            )
             continue
         owner, name = activity.full_name.split("/", 1)
         deduped_candidates[activity.full_name] = {
@@ -803,7 +821,9 @@ async def persist_gh_archive_hour(
         (
             await session.scalars(
                 select(RepositoryCandidate).where(
-                    RepositoryCandidate.full_name.in_([act.full_name for act in result.repositories])
+                    RepositoryCandidate.full_name.in_(
+                        [act.full_name for act in result.repositories]
+                    )
                 )
             )
         ).all()

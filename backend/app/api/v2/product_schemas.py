@@ -126,6 +126,8 @@ class TopicResponse(BaseModel):
     name: str
     description: str
     terms: list[str]
+    parent_slug: str | None = None
+    repository_count: int = 0
 
 
 class TopicProject(BaseModel):
@@ -138,8 +140,16 @@ class TopicProject(BaseModel):
     stars: int
 
 
+class TopicLanguageFacet(BaseModel):
+    value: str
+    count: int
+
+
 class TopicDetail(BaseModel):
     topic: TopicResponse
     projects: list[TopicProject]
-    changes: list[ChangeResponse]
-    limit: int = 60
+    limit: int = 30
+    total_count: int = 0
+    next_cursor: str | None = None
+    languages: list[TopicLanguageFacet] = Field(default_factory=list)
+    changes: list[ChangeResponse] = Field(default_factory=list)

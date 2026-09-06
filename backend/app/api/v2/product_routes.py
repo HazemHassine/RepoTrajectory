@@ -1,8 +1,8 @@
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import String, and_, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v2.product_schemas import (
@@ -15,6 +15,8 @@ from app.api.v2.product_schemas import (
     EvidenceResponse,
     ExternalSourcesResponse,
     TopicDetail,
+    TopicLanguageFacet,
+    TopicProject,
     TopicResponse,
 )
 from app.core.config import get_settings
@@ -22,7 +24,14 @@ from app.db.models import CatalogRepository, ExternalEvidenceItem, RepositoryCha
 from app.db.session import get_session
 from app.services.evidence import utc
 from app.services.project_brief import build_brief, evaluate_constraints, external_sources
-from app.services.topics import TOPICS, topic_projects
+from app.services.topics import (
+    build_topic_predicate,
+    decode_cursor,
+    encode_cursor,
+    extract_matched_terms,
+    get_all_topics,
+    get_topic_definition,
+)
 
 router = APIRouter(tags=["product"])
 Session = Annotated[AsyncSession, Depends(get_session)]
@@ -116,28 +125,146 @@ async def compare(payload: CompareRequest, session: Session) -> CompareResponse:
 
 
 @router.get("/topics", response_model=list[TopicResponse])
-async def topics() -> list[TopicResponse]:
-    return TOPICS
+async def topics(session: Session) -> list[TopicResponse]:
+    return await get_all_topics(session)
 
 
 @router.get("/topics/{slug}", response_model=TopicDetail)
-async def topic(slug: str, session: Session) -> TopicDetail:
-    config = next((topic for topic in TOPICS if topic.slug == slug), None)
-    if config is None:
+async def topic(
+    slug: str,
+    session: Session,
+    q: str | None = Query(
+        None, max_length=200, description="Optional text search within the topic"
+    ),
+    language: str | None = Query(None, max_length=100, description="Optional language filter"),
+    sort: Literal["relevance", "stars", "updated"] = Query("relevance", description="Sort order"),
+    cursor: str | None = Query(None, description="Opaque pagination cursor"),
+    limit: int = Query(30, ge=1, le=100, description="Page limit"),
+) -> TopicDetail:
+    topic_def = get_topic_definition(slug)
+    if topic_def is None:
         raise HTTPException(404, "Topic not found")
-    projects = await topic_projects(session, config)
-    rows = (
-        await session.scalars(
-            select(RepositoryChangeEvent)
-            .where(
-                RepositoryChangeEvent.github_id.in_([project.github_id for project in projects]),
-            )
-            .order_by(RepositoryChangeEvent.occurred_at.desc())
-            .limit(20)
+
+    q_clean = q.strip() if q and q.strip() else None
+    lang_clean = language.strip() if language and language.strip() else None
+    offset = decode_cursor(cursor, slug, q_clean, lang_clean, sort)
+
+    base_topic_pred = build_topic_predicate(topic_def)
+
+    if q_clean:
+        search_pred = or_(
+            CatalogRepository.full_name.ilike(f"%{q_clean}%"),
+            CatalogRepository.description.ilike(f"%{q_clean}%"),
+            cast(CatalogRepository.topics, String).ilike(f"%{q_clean}%"),
         )
-    ).all()
+        topic_and_q_pred = and_(base_topic_pred, search_pred)
+    else:
+        topic_and_q_pred = base_topic_pred
+
+    # Language facets computed from topic + q matches before language filter
+    lang_stmt = (
+        select(
+            CatalogRepository.primary_language,
+            func.count(CatalogRepository.github_id),
+        )
+        .where(
+            CatalogRepository.archived.is_(False),
+            CatalogRepository.is_fork.is_(False),
+            topic_and_q_pred,
+            CatalogRepository.primary_language.is_not(None),
+            CatalogRepository.primary_language != "",
+        )
+        .group_by(CatalogRepository.primary_language)
+        .order_by(
+            func.count(CatalogRepository.github_id).desc(),
+            CatalogRepository.primary_language.asc(),
+        )
+    )
+    lang_rows = (await session.execute(lang_stmt)).all()
+    languages = [TopicLanguageFacet(value=str(row[0]), count=int(row[1])) for row in lang_rows]
+
+    # Total count after language filter
+    if lang_clean:
+        final_pred = and_(
+            topic_and_q_pred,
+            CatalogRepository.primary_language.ilike(lang_clean),
+        )
+    else:
+        final_pred = topic_and_q_pred
+
+    count_stmt = select(func.count(CatalogRepository.github_id)).where(
+        CatalogRepository.archived.is_(False),
+        CatalogRepository.is_fork.is_(False),
+        final_pred,
+    )
+    total_count = int(await session.scalar(count_stmt) or 0)
+
+    # Deterministic ordering with identity tie-breaker
+    data_stmt = select(CatalogRepository).where(
+        CatalogRepository.archived.is_(False),
+        CatalogRepository.is_fork.is_(False),
+        final_pred,
+    )
+    if sort == "stars":
+        data_stmt = data_stmt.order_by(
+            CatalogRepository.stars.desc(),
+            CatalogRepository.github_id.asc(),
+        )
+    elif sort == "updated":
+        data_stmt = data_stmt.order_by(
+            CatalogRepository.pushed_at.desc().nullslast(),
+            CatalogRepository.github_id.asc(),
+        )
+    else:  # relevance
+        data_stmt = data_stmt.order_by(
+            CatalogRepository.selection_score.desc(),
+            CatalogRepository.stars.desc(),
+            CatalogRepository.github_id.asc(),
+        )
+
+    rows = (await session.scalars(data_stmt.offset(offset).limit(limit))).all()
+    projects = [
+        TopicProject(
+            github_id=repo.github_id,
+            full_name=repo.full_name,
+            description=repo.description,
+            primary_language=repo.primary_language,
+            matched_terms=extract_matched_terms(repo, topic_def),
+            pushed_at=repo.pushed_at,
+            stars=repo.stars,
+        )
+        for repo in rows
+    ]
+
+    next_offset = offset + len(rows)
+    if next_offset < total_count and len(rows) == limit:
+        next_cursor = encode_cursor(slug, q_clean, lang_clean, sort, next_offset)
+    else:
+        next_cursor = None
+
+    # Compute actual matching count for the topic metadata
+    topic_count_stmt = select(func.count(CatalogRepository.github_id)).where(
+        CatalogRepository.archived.is_(False),
+        CatalogRepository.is_fork.is_(False),
+        base_topic_pred,
+    )
+    topic_repo_count = int(await session.scalar(topic_count_stmt) or 0)
+
+    topic_response = TopicResponse(
+        slug=topic_def.slug,
+        name=topic_def.name,
+        description=topic_def.description,
+        terms=topic_def.terms,
+        parent_slug=topic_def.parent_slug,
+        repository_count=topic_repo_count,
+    )
+
     return TopicDetail(
-        topic=config,
+        topic=topic_response,
         projects=projects,
-        changes=[ChangeResponse.model_validate(row) for row in rows],
+        limit=limit,
+        total_count=total_count,
+        next_cursor=next_cursor,
+        languages=languages,
+        changes=[],
     )

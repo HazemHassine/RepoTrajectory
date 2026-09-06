@@ -165,6 +165,37 @@ class CollectorScheduler:
                 max_attempts=3,
             )
             discovery += 1
+        # Broaden discovery across software engineering categories
+        # using durable, deduplicated daily jobs
+        category_topics = [
+            "frontend",
+            "fullstack",
+            "api",
+            "graphql",
+            "database",
+            "redis",
+            "devops",
+            "kubernetes",
+            "cli",
+            "compiler",
+            "security",
+            "cryptography",
+            "cross-platform",
+            "mobile",
+            "agentic",
+            "rag",
+        ]
+        for c_topic in category_topics:
+            await enqueue_job(
+                session,
+                "discover_github",
+                f"discover:github:topic:{c_topic.casefold()}:{day_key}",
+                payload={"topic": c_topic},
+                collection_id=collection.id,
+                priority=75,
+                max_attempts=3,
+            )
+            discovery += 1
         if self.settings.gh_archive_enabled:
             latest = (now - timedelta(hours=self.settings.gh_archive_lag_hours)).replace(
                 minute=0, second=0, microsecond=0
@@ -349,8 +380,10 @@ class CollectorWorker:
             if job is None:
                 return
             if job.job_type == "discover_github":
+                lang = str(job.payload["language"]) if "language" in job.payload else None
+                topic = str(job.payload["topic"]) if "topic" in job.payload else None
                 await discover_github_repositories(
-                    session, self.github, self.settings, str(job.payload["language"])
+                    session, self.github, self.settings, language=lang, topic=topic
                 )
             elif job.job_type == "discover_gharchive":
                 archive_hour = datetime.fromisoformat(str(job.payload["archive_hour"]))
