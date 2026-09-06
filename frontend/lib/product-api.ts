@@ -52,6 +52,19 @@ export type TopicDetail = {
   languages?: { value: string; count: number }[];
 };
 export type Changes = { items: Change[]; retention_start: string; truncated: boolean };
+export type TableStat = {
+  table_name: string;
+  row_estimate: number;
+  total_size: string;
+  total_bytes: number;
+};
+export type SystemOverview = {
+  status: string;
+  db_size: string;
+  db_bytes: number;
+  tables: TableStat[];
+  generated_at?: string;
+};
 export const productApi = {
   brief: (owner: string, name: string) => getV2<Brief>(`/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/brief`),
   changes: (id: number, since: string) => getV2<Changes>(`/repositories/by-id/${id}/changes?since=${encodeURIComponent(since)}`),
@@ -62,4 +75,6 @@ export const productApi = {
     for (const [key, value] of Object.entries(filters)) if (value) query.set(key, value);
     return getV2<TopicDetail>(`/topics/${encodeURIComponent(slug)}?${query}`);
   },
+  overview: () => getV2<SystemOverview>("/overview"),
 };
+

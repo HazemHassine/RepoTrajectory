@@ -9,6 +9,7 @@ import {
   RectangleGroupIcon,
   ShieldCheckIcon,
   SparklesIcon,
+  TableCellsIcon,
 } from "@heroicons/react/24/outline";
 import { motion } from "motion/react";
 import Link from "next/link";
@@ -27,6 +28,7 @@ const navigation = [
   { href: "/scout", label: "Scout", icon: SparklesIcon },
   { href: "/compare", label: "Compare", icon: ArrowsRightLeftIcon },
   { href: "/methodology", label: "Methodology", icon: BeakerIcon },
+  { href: "/overview", label: "Overview", icon: TableCellsIcon },
 ];
 
 export function AppNavigation() {

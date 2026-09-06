@@ -30,6 +30,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <a href="/compare" className="transition-colors hover:text-[#ffffff]">
                 Compare
               </a>
+              <a href="/overview" className="text-[#ccf200] transition-colors hover:underline">
+                Overview (Dev)
+              </a>
             </div>
           </div>
         </footer>
