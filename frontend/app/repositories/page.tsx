@@ -70,7 +70,6 @@ export default async function Repositories({
     <main>
       <PageHeader
         title="Repositories"
-        description="Directory of active open-source software repositories across ecosystems, indexed by technology, activity, and health."
         action={
           <div className="flex items-center gap-2">
             <IngestionCommand />
@@ -81,8 +80,8 @@ export default async function Repositories({
         {retrievalMode && <p className="mb-4 text-xs text-[#9a9a9a]">{retrievalMode}</p>}
         {unavailable ? (
           <EmptyState
-            title="Directory API unavailable"
-            description="Start FastAPI on port 8000 to query the repository directory."
+            title="Repositories unavailable"
+            description="Please try again shortly."
           />
         ) : (
           <Suspense fallback={<div className="panel p-12 text-center font-mono text-xs text-[#9a9a9a]">Loading directory...</div>}>

@@ -5,13 +5,18 @@ Repositories can match multiple topics; parent results represent the deduplicate
 of their children.
 """
 
+import asyncio
 import base64
 import json
+import math
 import time
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import HTTPException
-from sqlalchemy import ColumnElement, String, and_, cast, func, or_, select
+from sqlalchemy import ColumnElement, String, and_, cast, false, func, or_, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v2.product_schemas import TopicProject, TopicResponse
@@ -643,17 +648,18 @@ def get_topic_children(parent_slug: str) -> list[TopicDefinition]:
 def build_single_topic_predicate(topic: TopicDefinition) -> ColumnElement[bool]:
     """Build a SQL predicate for a single child topic with exact tag and safe phrase matching."""
     tag_predicates = [
-        cast(CatalogRepository.topics, String).ilike(f'%"{term}"%') for term in topic.terms
+        cast(CatalogRepository.topics, String).icontains(f'"{term}"', autoescape=True)
+        for term in topic.terms
     ]
     phrase_predicates = [
-        CatalogRepository.description.ilike(f"%{phrase}%") for phrase in topic.phrases
+        CatalogRepository.description.icontains(phrase, autoescape=True) for phrase in topic.phrases
     ]
     all_predicates = tag_predicates + phrase_predicates
     include_ids = INCLUDE.get(topic.slug, set())
     if include_ids:
         all_predicates.append(CatalogRepository.github_id.in_(include_ids))
 
-    base_pred = or_(*all_predicates) if all_predicates else or_()
+    base_pred = or_(*all_predicates) if all_predicates else false()
     exclude_ids = EXCLUDE.get(topic.slug, set())
     if exclude_ids:
         return and_(base_pred, CatalogRepository.github_id.not_in(exclude_ids))
@@ -716,36 +722,50 @@ def extract_matched_terms(repo: CatalogRepository, topic: TopicDefinition) -> li
 _CACHE_EXPIRY_SECONDS = 300.0
 _cached_counts: dict[str, int] = {}
 _cache_updated_at: float = 0.0
+_cache_lock = asyncio.Lock()
+_cache_retry_after: float = 0.0
 
 
 def clear_topic_cache() -> None:
     """Clear in-memory topic counts cache (useful in tests and updates)."""
-    global _cached_counts, _cache_updated_at
+    global _cached_counts, _cache_updated_at, _cache_retry_after
+    _cache_retry_after = 0.0
     _cached_counts = {}
     _cache_updated_at = 0.0
 
 
 async def get_cached_topic_counts(session: AsyncSession) -> dict[str, int]:
-    """Get topic repository counts, refreshing the in-memory cache every 300s."""
-    global _cached_counts, _cache_updated_at
-    now = time.monotonic()
-    if _cached_counts and (now - _cache_updated_at) < _CACHE_EXPIRY_SECONDS:
-        return _cached_counts
-
-    counts: dict[str, int] = {}
-    for topic_def in TAXONOMY:
-        pred = build_topic_predicate(topic_def)
-        stmt = select(func.count(CatalogRepository.github_id)).where(
-            CatalogRepository.archived.is_(False),
-            CatalogRepository.is_fork.is_(False),
-            pred,
+    """One aggregate scan per refresh; serialize refreshes and retain stale successes."""
+    global _cached_counts, _cache_updated_at, _cache_retry_after
+    async with _cache_lock:
+        now = time.monotonic()
+        if _cached_counts and (
+            now - _cache_updated_at < _CACHE_EXPIRY_SECONDS or now < _cache_retry_after
+        ):
+            return _cached_counts
+        stmt = (
+            select(
+                *[
+                    func.count().filter(build_topic_predicate(topic)).label(topic.slug)
+                    for topic in TAXONOMY
+                ]
+            )
+            .select_from(CatalogRepository)
+            .where(CatalogRepository.archived.is_(False), CatalogRepository.is_fork.is_(False))
         )
-        count = int(await session.scalar(stmt) or 0)
-        counts[topic_def.slug] = count
-
-    _cached_counts = counts
-    _cache_updated_at = now
-    return _cached_counts
+        try:
+            # A failed refresh must not poison the caller's transaction.
+            async with session.begin_nested():
+                row = (await session.execute(stmt)).one()
+        except SQLAlchemyError:
+            if not _cached_counts:
+                raise
+            _cache_retry_after = time.monotonic() + 30
+            return _cached_counts
+        _cached_counts = {topic.slug: int(row[i]) for i, topic in enumerate(TAXONOMY)}
+        _cache_updated_at = time.monotonic()
+        _cache_retry_after = 0.0
+        return _cached_counts
 
 
 async def get_all_topics(session: AsyncSession) -> list[TopicResponse]:
@@ -769,18 +789,24 @@ def encode_cursor(
     q: str | None,
     language: str | None,
     sort: str,
-    offset: int,
+    repo: CatalogRepository,
 ) -> str:
-    """Encode an opaque, tamper-evident pagination cursor bound to query context."""
+    """Encode a context-bound keyset position (not a signed security token)."""
+    pushed = repo.pushed_at
+    if pushed and pushed.tzinfo is None:
+        pushed = pushed.replace(tzinfo=UTC)
     payload = {
+        "v": 2,
         "slug": slug,
         "q": q or "",
         "lang": language or "",
         "sort": sort,
-        "offset": offset,
+        "id": repo.github_id,
+        "stars": repo.stars,
+        "score": repo.selection_score,
+        "pushed": pushed.isoformat() if pushed else None,
     }
-    raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-    return base64.urlsafe_b64encode(raw).decode("utf-8")
+    return base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()
 
 
 def decode_cursor(
@@ -789,30 +815,65 @@ def decode_cursor(
     expected_q: str | None,
     expected_language: str | None,
     expected_sort: str,
-) -> int:
-    """Decode and strictly validate a pagination cursor against the current query context."""
+) -> dict[str, Any] | None:
     if not cursor:
-        return 0
+        return None
     try:
-        raw = base64.urlsafe_b64decode(cursor.encode("utf-8"))
-        data = json.loads(raw.decode("utf-8"))
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid cursor format") from None
-    if not isinstance(data, dict):
-        raise HTTPException(status_code=400, detail="Invalid cursor payload")
-
-    if (
-        data.get("slug") != expected_slug
-        or data.get("q") != (expected_q or "")
-        or data.get("lang") != (expected_language or "")
-        or data.get("sort") != expected_sort
+        if len(cursor) > 4096:
+            raise ValueError("oversized cursor")
+        data = json.loads(base64.b64decode(cursor, altchars=b"-_", validate=True))
+        if not isinstance(data, dict):
+            raise ValueError("invalid payload")
+    except (ValueError, UnicodeError):
+        raise HTTPException(400, "Invalid cursor format") from None
+    if (data.get("slug"), data.get("q"), data.get("lang"), data.get("sort")) != (
+        expected_slug,
+        expected_q or "",
+        expected_language or "",
+        expected_sort,
     ):
-        raise HTTPException(status_code=400, detail="Cursor context does not match request filters")
+        raise HTTPException(400, "Cursor context does not match request filters")
+    try:
+        if data.get("v") != 2:
+            raise ValueError("expired cursor version")
+        for key in ("id", "stars"):
+            if type(data.get(key)) is not int or not 0 <= data[key] <= 2**63 - 1:
+                raise ValueError("invalid integer")
+        if type(data.get("score")) not in (int, float) or not math.isfinite(data["score"]):
+            raise ValueError("invalid score")
+        pushed = data["pushed"]
+        if pushed is not None:
+            pushed = datetime.fromisoformat(pushed)
+            if pushed.tzinfo is None:
+                raise ValueError("missing timezone")
+        data["pushed"] = pushed
+    except (KeyError, ValueError, TypeError, OverflowError):
+        raise HTTPException(400, "Invalid cursor position; restart from the first page") from None
+    return data
 
-    offset = data.get("offset")
-    if not isinstance(offset, int) or offset < 0:
-        raise HTTPException(status_code=400, detail="Invalid cursor offset")
-    return offset
+
+def cursor_predicate(position: dict[str, Any], sort: str) -> ColumnElement[bool]:
+    """Seek after the previous last row, including null dates and identity ties."""
+    repo = CatalogRepository
+    after_id = repo.github_id > position["id"]
+    if sort == "updated":
+        pushed = position["pushed"]
+        if pushed is None:
+            return and_(repo.pushed_at.is_(None), after_id)
+        return or_(
+            repo.pushed_at < pushed,
+            repo.pushed_at.is_(None),
+            and_(repo.pushed_at == pushed, after_id),
+        )
+    after_stars = or_(
+        repo.stars < position["stars"], and_(repo.stars == position["stars"], after_id)
+    )
+    if sort == "stars":
+        return after_stars
+    return or_(
+        repo.selection_score < position["score"],
+        and_(repo.selection_score == position["score"], after_stars),
+    )
 
 
 async def topic_projects(

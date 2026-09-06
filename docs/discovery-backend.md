@@ -278,13 +278,13 @@ interface TopicProject {
 #### Field Semantics
 - `total_count`: Count of matching repositories **after** applying `q` and `language` filters.
 - `languages`: Language facets computed across `topic + q` matches **before** the `language` filter is applied (enabling UI dropdowns to show available language distributions).
-- `next_cursor`: Base64-encoded token containing `slug`, `q`, `language`, `sort`, and `offset`. Set to `null` on the last page.
+- `next_cursor`: Base64-encoded token containing the query context and the last repository’s sort values and ID. Set to `null` on the last page.
 - `changes`: Empty list `[]` maintained for backward compatibility (the expensive `RepositoryChangeEvent` table scan was removed).
 
-#### Cursor Security & Context Binding
+#### Cursor Validation & Context Binding
 Cursors encode their search context:
 ```json
-{"slug": "web", "q": "react", "lang": "TypeScript", "sort": "stars", "offset": 30}
+{"v": 2, "slug": "web", "q": "react", "lang": "TypeScript", "sort": "stars", "id": 123, "stars": 500, "score": 50.0, "pushed": null}
 ```
 If a client attempts to reuse a cursor across a different topic, sort order, or filter parameter, the server rejects it with `400 Bad Request` (`"Cursor context does not match request filters"`). Malformed base64 or invalid JSON is similarly rejected with `400 Bad Request`.
 
@@ -293,7 +293,7 @@ If a client attempts to reuse a cursor across a different topic, sort order, or 
 - `stars`: `stars DESC, github_id ASC`
 - `updated`: `pushed_at DESC NULLS LAST, github_id ASC`
 
-Every sort order terminates with `github_id ASC`, ensuring stable, deterministic pagination across pages even when repositories share identical star counts or update timestamps.
+Every sort order terminates with `github_id ASC`. Keyset continuation avoids offsets shifting when earlier rows are inserted or deleted. Results are a live view, not a frozen snapshot: changing a repository’s sort values can still move it between pages. Cursors are validated navigation data, not signed security tokens; older offset cursors must restart at the first page.
 
 ---
 
@@ -344,23 +344,43 @@ All 60 test cases pass with zero regressions.
 ### Verification Commands
 ```bash
 # 1. Inspect taxonomy overview
-curl -s http://localhost:10100/api/v2/topics | jq '.[0:5]'
+curl -s http://localhost:10100/backend/api/v2/topics | jq '.[0:5]'
 
 # 2. Browse parent topic (Web) with pagination
-curl -s "http://localhost:10100/api/v2/topics/web?limit=5" | jq '{topic: .topic.name, count: .total_count, projects: [.projects[].full_name]}'
+curl -s "http://localhost:10100/backend/api/v2/topics/web?limit=5" | jq '{topic: .topic.name, count: .total_count, projects: [.projects[].full_name]}'
 
 # 3. Browse legacy slug (agent-frameworks)
-curl -s "http://localhost:10100/api/v2/topics/agent-frameworks" | jq '{topic: .topic.name, parent: .topic.parent_slug, count: .total_count}'
+curl -s "http://localhost:10100/backend/api/v2/topics/agent-frameworks" | jq '{topic: .topic.name, parent: .topic.parent_slug, count: .total_count}'
 
 # 4. Search and filter by language with facets
-curl -s "http://localhost:10100/api/v2/topics/data-databases?q=sql&language=Rust" | jq '{total: .total_count, languages: .languages, projects: [.projects[].full_name]}'
+curl -s "http://localhost:10100/backend/api/v2/topics/data-databases?q=sql&language=Rust" | jq '{total: .total_count, languages: .languages, projects: [.projects[].full_name]}'
 ```
 
 ### Backfill & Scheduled Collection
 ```bash
 # Enqueue discovery tick manually via collector CLI
-python -m app.cli collector --once
+python -m app.cli schedule
 
 # Reconcile directory selection
-python -m app.cli reconcile
+python -m app.cli reconcile-directory
 ```
+
+## Integration fixes
+
+Topic counts refresh through one conditional aggregate query instead of 44 separate
+queries. A process-local lock prevents overlapping refreshes. Successful counts
+are cached for five minutes; database failures retain the last successful counts
+and retry after 30 seconds. A cold cache propagates failure instead of inventing zeros.
+Search terms and language filters treat SQL wildcard characters literally.
+
+The metadata audit above is the previous agent’s measured snapshot, not a fresh
+measurement during integration. Broader discovery adds bounded daily search jobs;
+it does not bulk-fill the existing metadata backlog. No migration is required.
+
+Category/language search results now update the canonical catalog and search
+documents in the same transaction as candidate discovery. This reuses metadata
+already returned by GitHub, adds no HTTP requests, and preserves deep-analysis
+links, ranking, and README evidence. Existing stubs encountered by search gain
+metadata immediately. Category jobs run before directory reconciliation. The
+remaining unseen stub backlog still requires future collection; it is not bulk
+hydrated by this change.

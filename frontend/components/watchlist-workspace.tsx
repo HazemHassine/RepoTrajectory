@@ -28,9 +28,9 @@ export function WatchlistWorkspace() {
   return <div className="space-y-5">
     {error && <p role="alert">{error}</p>}
     {!entries.length && !error && <div className="panel p-8">
-      <h2 className="text-xl">Keep the reason behind your next technology decision.</h2>
-      <p className="my-4 text-[#9a9a9a]">Open a project brief, choose Watch, and save what you need to see before adopting it.</p>
-      <Link className="button-primary" href="/topics">Explore technology topics</Link>
+      <h2 className="text-xl">Your watchlist is empty</h2>
+      <p className="my-4 text-[#9a9a9a]">Save projects to find them here.</p>
+      <Link className="button-primary" href="/topics">Explore topics</Link>
     </div>}
     {entries.map(entry => <article className="panel space-y-4 p-5" key={entry.githubId}>
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -44,8 +44,8 @@ export function WatchlistWorkspace() {
           } catch { setError("Could not remove watch entry."); }
         }}>Remove watch</button>
       </div>
-      <p><span className="text-[#9a9a9a]">Why I saved it: </span>{entry.reason}</p>
-      {entry.blocker && <p><span className="text-[#9a9a9a]">My blocker: </span>{entry.blocker}</p>}
+      <p><span className="text-[#9a9a9a]">Notes: </span>{entry.reason}</p>
+      {entry.blocker && <p><span className="text-[#9a9a9a]">Blocker: </span>{entry.blocker}</p>}
       {!!entry.tags.length && <p className="text-xs text-[#9a9a9a]">{entry.tags.join(" · ")}</p>}
       <WatchButton githubId={entry.githubId} fullName={entry.fullName} />
       <WatchChanges entry={entry} />
@@ -66,12 +66,12 @@ function WatchChanges({ entry }: { entry: WatchEntry }) {
     return () => { active = false; };
   }, [entry.githubId, entry.watchedAt, attempt]);
   return <section className="space-y-3 border-t border-[#222] pt-4">
-    <h3 className="font-semibold">Changes since I watched this</h3>
+    <h3 className="font-semibold">Since you saved it</h3>
     {error ? <p role="alert">{error} <button className="text-[#ccf200]" onClick={() => setAttempt(attempt + 1)}>Retry</button></p>
       : data ? <>
         <ChangeList items={data.items} />
         {(data.truncated || Date.parse(entry.watchedAt) < Date.parse(data.retention_start)) && <p className="text-xs text-amber-300">This is a bounded change history; older or additional events may be omitted.</p>}
       </> : <p role="status">Loading recorded changes…</p>}
-    <p className="text-xs text-[#9a9a9a]">Events are source observations. A release or discussion does not establish that your blocker is resolved. Local watches do not request additional collection.</p>
+    <p className="text-xs text-[#9a9a9a]">Updates depend on collection coverage; blockers aren’t checked automatically.</p>
   </section>;
 }

@@ -395,3 +395,201 @@ async def test_public_reads_make_zero_external_requests(
 
         # Assert no external calls were made
         assert respx_mock.calls.call_count == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sort", ["stars", "relevance", "updated"])
+async def test_keyset_survives_insertion_and_deletion_before_page(
+    client: AsyncClient,
+    db_session: AsyncSession,
+    sort: str,
+) -> None:
+    now = datetime.now(UTC)
+    repos = [
+        make_repo(
+            i,
+            f"tool-{i}",
+            ["cli"],
+            "command line tool",
+            stars=100,
+            selection_score=50,
+            pushed_at=now,
+        )
+        for i in (901, 902, 903, 904)
+    ]
+    db_session.add_all(repos)
+    await db_session.commit()
+    first = (await client.get(f"/api/v2/topics/cli-terminal?sort={sort}&limit=2")).json()
+    assert [p["github_id"] for p in first["projects"]] == [901, 902]
+    # Delete an earlier row: offset pagination would skip 903.
+    await db_session.delete(repos[0])
+    await db_session.commit()
+    second = await client.get(
+        "/api/v2/topics/cli-terminal",
+        params={
+            "sort": sort,
+            "limit": 2,
+            "cursor": first["next_cursor"],
+        },
+    )
+    assert [p["github_id"] for p in second.json()["projects"]] == [903, 904]
+    # Insert ahead of the page boundary: continuation must still start at 903.
+    db_session.add(
+        make_repo(
+            900,
+            "new-tool",
+            ["cli"],
+            "command line tool",
+            stars=100,
+            selection_score=50,
+            pushed_at=now,
+        )
+    )
+    await db_session.commit()
+    again = await client.get(
+        "/api/v2/topics/cli-terminal",
+        params={
+            "sort": sort,
+            "limit": 2,
+            "cursor": first["next_cursor"],
+        },
+    )
+    assert [p["github_id"] for p in again.json()["projects"]] == [903, 904]
+
+
+@pytest.mark.asyncio
+async def test_updated_pagination_handles_unknown_push_dates(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    repos = [make_repo(i, f"tool-{i}", ["cli"], "command line tool") for i in (911, 912, 913)]
+    repos[1].pushed_at = None
+    repos[2].pushed_at = None
+    db_session.add_all(repos)
+    await db_session.commit()
+    cursor = None
+    found = []
+    for _ in range(3):
+        params = {"sort": "updated", "limit": "1"}
+        if cursor:
+            params["cursor"] = cursor
+        response = await client.get("/api/v2/topics/cli-terminal", params=params)
+        assert response.status_code == 200
+        found.extend(p["github_id"] for p in response.json()["projects"])
+        cursor = response.json()["next_cursor"]
+    assert found == [911, 912, 913]
+    assert cursor is None
+
+
+@pytest.mark.asyncio
+async def test_search_and_language_do_not_interpret_sql_wildcards(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    db_session.add_all(
+        [
+            make_repo(921, "one", ["cli"], "100% local", primary_language="Python"),
+            make_repo(922, "two", ["cli"], "plain tool", primary_language="Rust"),
+        ]
+    )
+    await db_session.commit()
+    response = await client.get("/api/v2/topics/cli-terminal", params={"q": "%"})
+    assert [p["github_id"] for p in response.json()["projects"]] == [921]
+    response = await client.get("/api/v2/topics/cli-terminal", params={"language": "%"})
+    assert response.json()["total_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_topic_cache_keeps_last_success_after_database_failure(
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from unittest.mock import AsyncMock
+
+    from sqlalchemy.exc import SQLAlchemyError
+
+    from app.services import topics
+
+    clear_topic_cache()
+    expected = await topics.get_cached_topic_counts(db_session)
+    monkeypatch.setattr(topics, "_cache_updated_at", 0.0)
+    broken = AsyncMock(side_effect=SQLAlchemyError("temporary database failure"))
+    monkeypatch.setattr(db_session, "execute", broken)
+    assert await topics.get_cached_topic_counts(db_session) == expected
+    assert await topics.get_cached_topic_counts(db_session) == expected
+    assert broken.await_count == 1  # Retry cooldown prevents a request storm.
+    clear_topic_cache()
+    with pytest.raises(SQLAlchemyError):
+        await topics.get_cached_topic_counts(db_session)
+    clear_topic_cache()
+
+
+def test_cursor_rejects_invalid_positions() -> None:
+    from fastapi import HTTPException
+
+    from app.services.topics import decode_cursor, encode_cursor
+
+    repo = make_repo(930, "tool", ["cli"], "command line tool")
+    valid = json.loads(
+        base64.urlsafe_b64decode(encode_cursor("cli-terminal", None, None, "stars", repo))
+    )
+    for field, value in (
+        ("id", True),
+        ("stars", -1),
+        ("score", float("nan")),
+        ("pushed", "not a date"),
+        ("v", 1),
+    ):
+        payload = {**valid, field: value}
+        cursor = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()
+        with pytest.raises(HTTPException) as error:
+            decode_cursor(cursor, "cli-terminal", None, None, "stars")
+        assert error.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_search_discovery_publishes_catalog_metadata_without_hydration(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    from unittest.mock import AsyncMock
+
+    from app.core.config import Settings
+    from app.db.models import RepositorySearchDocument
+    from app.services.discovery import discover_github_repositories
+
+    stub = make_repo(950, "old-name", [], "")
+    stub.is_deep = True
+    stub.readme_excerpt = "Keep existing README"
+    db_session.add(stub)
+    await db_session.commit()
+    payload = {
+        "id": 950,
+        "owner": {"login": "test-org"},
+        "name": "sql-tool",
+        "full_name": "test-org/sql-tool",
+        "description": "A relational database engine",
+        "language": "Rust",
+        "topics": ["database", "sql"],
+        "stargazers_count": 25,
+        "created_at": "2020-01-01T00:00:00Z",
+        "updated_at": "2026-09-01T00:00:00Z",
+        "pushed_at": "2026-09-01T00:00:00Z",
+        "license": {"spdx_id": "MIT"},
+    }
+    github = AsyncMock()
+    github.search_repositories.return_value = [payload]
+    for _ in range(2):  # Replay must update rather than duplicate rows.
+        await discover_github_repositories(db_session, github, Settings(), topic="database")
+    db_session.expire_all()
+    response = await client.get("/api/v2/topics/relational-databases")
+    assert [p["full_name"] for p in response.json()["projects"]] == ["test-org/sql-tool"]
+    catalog = await db_session.get(CatalogRepository, 950)
+    assert catalog is not None and catalog.is_deep
+    assert catalog.readme_excerpt == "Keep existing README"
+    document = await db_session.get(RepositorySearchDocument, 950)
+    assert document is not None and document.primary_language == "Rust"
+    assert github.search_repositories.await_count == 2
+    assert all(
+        call[0] == "search_repositories" for call in github.method_calls
+    )

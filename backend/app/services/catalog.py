@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 from sqlalchemy import select
@@ -217,3 +218,96 @@ async def generate_catalog_embeddings(
     await session.commit()
     log.info("catalog_embeddings_generated", count=count, version=version)
     return count
+
+
+async def sync_catalog_from_search(
+    session: AsyncSession,
+    items: list[dict[str, Any]],
+    candidates: list[dict[str, Any]],
+    now: datetime,
+) -> None:
+    """Publish bounded search metadata without requiring deep hydration or extra HTTP."""
+    payloads = {item["id"]: item for item in items}
+    rows = []
+    for candidate in candidates:
+        if not candidate["eligible"]:
+            continue
+        payload = payloads[candidate["github_id"]]
+        if not payload.get("created_at") or not payload.get("updated_at"):
+            continue
+        license_data = payload.get("license")
+        rows.append(
+            {
+                **{
+                    key: candidate[key]
+                    for key in (
+                        "github_id",
+                        "owner",
+                        "name",
+                        "full_name",
+                        "description",
+                        "primary_language",
+                        "topics",
+                        "classification",
+                        "classification_confidence",
+                        "rejection_reason",
+                        "stars",
+                        "forks",
+                        "pushed_at",
+                        "archived",
+                        "is_fork",
+                    )
+                },
+                "license": license_data.get("spdx_id") if isinstance(license_data, dict) else None,
+                "default_branch": payload.get("default_branch") or "main",
+                "created_at": datetime.fromisoformat(
+                    str(payload["created_at"]).replace("Z", "+00:00")
+                ),
+                "updated_at": datetime.fromisoformat(
+                    str(payload["updated_at"]).replace("Z", "+00:00")
+                ),
+                "last_discovered_at": now,
+                "last_observed_at": now,
+                "provenance": {"source": "github_search", "observed_at": now.isoformat()},
+            }
+        )
+    if not rows:
+        return
+    stmt = insert(CatalogRepository).values(rows)
+    # Preserve deep links, tier, ranking, original discovery time and README evidence.
+    await session.execute(
+        stmt.on_conflict_do_update(
+            index_elements=[CatalogRepository.github_id],
+            set_={
+                key: getattr(stmt.excluded, key)
+                for key in rows[0]
+                if key not in {"github_id", "created_at", "last_discovered_at", "provenance"}
+            },
+        )
+    )
+    documents = [
+        {
+            "github_id": row["github_id"],
+            "full_name": row["full_name"],
+            "owner": row["owner"],
+            "name": row["name"],
+            "description": row["description"],
+            "topics_text": " ".join(str(topic) for topic in row["topics"]),
+            "primary_language": row["primary_language"],
+            "license": row["license"],
+            "updated_at": now,
+            "readme_text": "",
+        }
+        for row in rows
+    ]
+    doc_stmt = insert(RepositorySearchDocument).values(documents)
+    await session.execute(
+        doc_stmt.on_conflict_do_update(
+            index_elements=[RepositorySearchDocument.github_id],
+            set_={
+                key: getattr(doc_stmt.excluded, key)
+                for key in documents[0]
+                if key not in {"github_id", "readme_text"}
+            },
+        )
+    )

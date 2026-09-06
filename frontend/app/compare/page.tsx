@@ -7,7 +7,7 @@ export default async function Compare({ searchParams }: { searchParams: Promise<
   let unavailable = false;
   try { repos = (await api.v2.repositories({ limit: 100 })).items; }
   catch { unavailable = true; }
-  return <main><PageHeader title="Compare for your situation" description="Bring your constraints. Inspect the evidence, identify unknowns, and save what would change your decision." />
+  return <main><PageHeader title="Compare repositories" />
     <div className="mx-auto max-w-[1200px] space-y-4 px-5 py-8">
       {unavailable && <p role="alert">Catalog suggestions are unavailable. You can enter owner/repository and retry.</p>}
       <CompareExplorer repositories={repos} initialA={query.a} initialB={query.b} />

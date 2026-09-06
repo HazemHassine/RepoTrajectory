@@ -55,3 +55,20 @@ def test_admin_origin_configuration_is_normalized() -> None:
         "http://localhost:10100",
         "http://127.0.0.1:10100",
     ]
+
+
+def test_admin_signature_rejects_noncanonical_base64() -> None:
+    import base64
+
+    settings = admin_settings()
+    token, _ = create_admin_session(settings)
+    payload, signature = token.split(".")
+    raw = base64.urlsafe_b64decode(signature + "=")
+    aliases = 0
+    for char in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_":
+        altered = signature[:-1] + char
+        if altered != signature and base64.urlsafe_b64decode(altered + "=") == raw:
+            aliases += 1
+            with pytest.raises(HTTPException):
+                decode_admin_session(payload + "." + altered, settings)
+    assert aliases == 3

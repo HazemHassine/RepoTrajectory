@@ -192,7 +192,7 @@ class CollectorScheduler:
                 f"discover:github:topic:{c_topic.casefold()}:{day_key}",
                 payload={"topic": c_topic},
                 collection_id=collection.id,
-                priority=75,
+                priority=95,
                 max_attempts=3,
             )
             discovery += 1

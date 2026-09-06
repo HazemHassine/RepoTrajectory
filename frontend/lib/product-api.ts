@@ -38,12 +38,18 @@ export type Comparison = {
     explanation: string; source_url: string | null;
   }[] }[]; recommendation: string | null; limitation: string; synthesis_mode: "structured";
 };
-export type Topic = { slug: string; name: string; description: string; terms: string[] };
+export type Topic = {
+  slug: string; name: string; description: string; terms: string[];
+  parent_slug?: string | null; repository_count?: number;
+};
+export type TopicFilters = { q?: string; language?: string; sort?: string; cursor?: string };
 export type TopicDetail = {
   topic: Topic; projects: {
     github_id: number; full_name: string; description: string | null;
     primary_language: string | null; matched_terms: string[]; pushed_at: string | null; stars: number;
   }[]; changes: Change[]; limit: number;
+  total_count?: number; next_cursor?: string | null;
+  languages?: { value: string; count: number }[];
 };
 export type Changes = { items: Change[]; retention_start: string; truncated: boolean };
 export const productApi = {
@@ -51,5 +57,9 @@ export const productApi = {
   changes: (id: number, since: string) => getV2<Changes>(`/repositories/by-id/${id}/changes?since=${encodeURIComponent(since)}`),
   compare: (ids: number[], constraints: Constraints) => postV2<Comparison>("/compare/context", { github_ids: ids, constraints }),
   topics: () => getV2<Topic[]>("/topics"),
-  topic: (slug: string) => getV2<TopicDetail>(`/topics/${encodeURIComponent(slug)}`),
+  topic: (slug: string, filters: TopicFilters = {}) => {
+    const query = new URLSearchParams({ limit: "30" });
+    for (const [key, value] of Object.entries(filters)) if (value) query.set(key, value);
+    return getV2<TopicDetail>(`/topics/${encodeURIComponent(slug)}?${query}`);
+  },
 };

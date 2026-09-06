@@ -1,16 +1,21 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/ui";
+import { TopicPicker } from "@/components/topic-picker";
+import { DiscoveryCard } from "@/components/discovery-card";
+import { api } from "@/lib/api";
 import { productApi } from "@/lib/product-api";
+
 export default async function TopicsPage() {
-  let topics;
-  try { topics = await productApi.topics(); } catch {
-    return <main><PageHeader title="Technology topics" description="Topic data is unavailable. Please reload to try again." /></main>;
-  }
-  return <main><PageHeader title="Technology radar" description="Explore tools for your next system. Collections follow project topics and descriptions, with explicit matching rules." />
-    <div className="mx-auto grid max-w-[1200px] gap-4 px-5 py-8 md:grid-cols-2">
-      {topics.map(topic => <Link href={`/topics/${topic.slug}`} key={topic.slug} className="panel space-y-3 p-6 hover:border-[#ccf200]">
-        <h2 className="text-xl font-semibold">{topic.name} →</h2><p className="text-sm text-[#9a9a9a]">{topic.description}</p>
-      </Link>)}
-      {!topics.length && <p>No topic rules configured.</p>}
-    </div></main>;
+  const [topics, catalog] = await Promise.allSettled([productApi.topics(), api.v2.repositories({ limit: 12, sort: "stars" })]);
+  return <main><PageHeader title="Explore topics" action={<Link href="/repositories" className="button-secondary">All repositories ↗</Link>} />
+    <div className="mx-auto max-w-[1200px] space-y-8 px-5 py-8">
+      {topics.status === "fulfilled" ? <TopicPicker topics={topics.value} /> : <p role="alert" className="panel p-5">Topics are unavailable. <Link className="text-[#ccf200]" href="/topics">Try again</Link></p>}
+      <section className="space-y-4"><h2 className="text-lg font-semibold">Popular repositories</h2>
+        {catalog.status === "fulfilled" ? <>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{catalog.value.items.map(project => <DiscoveryCard key={project.github_id} project={project} />)}</div>
+          {!catalog.value.items.length && <p className="text-sm text-[#9a9a9a]">No repositories yet.</p>}
+        </> : <p role="alert" className="text-sm text-[#9a9a9a]">Repositories are temporarily unavailable.</p>}
+      </section>
+    </div>
+  </main>;
 }

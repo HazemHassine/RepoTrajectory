@@ -26,6 +26,7 @@ from app.services.evidence import utc
 from app.services.project_brief import build_brief, evaluate_constraints, external_sources
 from app.services.topics import (
     build_topic_predicate,
+    cursor_predicate,
     decode_cursor,
     encode_cursor,
     extract_matched_terms,
@@ -138,7 +139,7 @@ async def topic(
     ),
     language: str | None = Query(None, max_length=100, description="Optional language filter"),
     sort: Literal["relevance", "stars", "updated"] = Query("relevance", description="Sort order"),
-    cursor: str | None = Query(None, description="Opaque pagination cursor"),
+    cursor: str | None = Query(None, max_length=4096, description="Opaque pagination cursor"),
     limit: int = Query(30, ge=1, le=100, description="Page limit"),
 ) -> TopicDetail:
     topic_def = get_topic_definition(slug)
@@ -147,15 +148,16 @@ async def topic(
 
     q_clean = q.strip() if q and q.strip() else None
     lang_clean = language.strip() if language and language.strip() else None
-    offset = decode_cursor(cursor, slug, q_clean, lang_clean, sort)
+    position = decode_cursor(cursor, slug, q_clean, lang_clean, sort)
 
     base_topic_pred = build_topic_predicate(topic_def)
 
     if q_clean:
+        literal_q = q_clean.replace("/", "//").replace("%", "/%").replace("_", "/_")
         search_pred = or_(
-            CatalogRepository.full_name.ilike(f"%{q_clean}%"),
-            CatalogRepository.description.ilike(f"%{q_clean}%"),
-            cast(CatalogRepository.topics, String).ilike(f"%{q_clean}%"),
+            CatalogRepository.full_name.ilike(f"%{literal_q}%", escape="/"),
+            CatalogRepository.description.ilike(f"%{literal_q}%", escape="/"),
+            cast(CatalogRepository.topics, String).ilike(f"%{literal_q}%", escape="/"),
         )
         topic_and_q_pred = and_(base_topic_pred, search_pred)
     else:
@@ -187,7 +189,7 @@ async def topic(
     if lang_clean:
         final_pred = and_(
             topic_and_q_pred,
-            CatalogRepository.primary_language.ilike(lang_clean),
+            func.lower(CatalogRepository.primary_language) == lang_clean.lower(),
         )
     else:
         final_pred = topic_and_q_pred
@@ -222,7 +224,10 @@ async def topic(
             CatalogRepository.github_id.asc(),
         )
 
-    rows = (await session.scalars(data_stmt.offset(offset).limit(limit))).all()
+    if position is not None:
+        data_stmt = data_stmt.where(cursor_predicate(position, sort))
+    page_rows = (await session.scalars(data_stmt.limit(limit + 1))).all()
+    rows = page_rows[:limit]
     projects = [
         TopicProject(
             github_id=repo.github_id,
@@ -236,9 +241,8 @@ async def topic(
         for repo in rows
     ]
 
-    next_offset = offset + len(rows)
-    if next_offset < total_count and len(rows) == limit:
-        next_cursor = encode_cursor(slug, q_clean, lang_clean, sort, next_offset)
+    if len(page_rows) > limit:
+        next_cursor = encode_cursor(slug, q_clean, lang_clean, sort, rows[-1])
     else:
         next_cursor = None
 

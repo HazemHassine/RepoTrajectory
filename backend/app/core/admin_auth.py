@@ -112,7 +112,7 @@ def decode_admin_session(token: str, settings: Settings, *, now: int | None = No
             encoded_payload.encode("ascii"),
             hashlib.sha256,
         ).digest()
-        if not hmac.compare_digest(expected_signature, _decode(encoded_signature)):
+        if not hmac.compare_digest(_encode(expected_signature), encoded_signature):
             raise ValueError("invalid signature")
         payload = json.loads(_decode(encoded_payload))
         current = int(time.time()) if now is None else now

@@ -24,6 +24,7 @@ from app.db.models import (
     RepositoryCandidate,
 )
 from app.github.client import GitHubAPIError, GitHubClient
+from app.services.catalog import sync_catalog_from_search
 
 log = structlog.get_logger()
 
@@ -712,6 +713,7 @@ async def discover_github_repositories(
             set_={"source": membership.excluded.source},
         )
     )
+    await sync_catalog_from_search(session, items, values, now)
     await session.commit()
     log.info(
         "github_discovery_completed",
